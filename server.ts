@@ -12,7 +12,6 @@ async function startServer() {
 
   app.use(express.json());
 
-  // API Route for Booking Notifications
   app.post("/api/notify-booking", async (req, res) => {
     const { bike, bookingDetails, customerDetails } = req.body;
 
@@ -30,7 +29,6 @@ async function startServer() {
       <p><strong>Email:</strong> ${customerDetails.email || 'Not provided'}</p>
     `;
 
-    // 1. Send Email to Operator
     try {
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -60,7 +58,6 @@ async function startServer() {
 
     console.log(`[WhatsApp Simulation] Sending booking confirmation to ${customerDetails.phone}...`);
 
-    // Save to Supabase
     const { createClient } = await import('@supabase/supabase-js');
     const supabase = createClient(
       'https://fpwaifhpfzzkantsalrb.supabase.co',
@@ -87,7 +84,6 @@ async function startServer() {
     res.json({ success: true, message: "Booking saved!" });
   });
 
-  // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
