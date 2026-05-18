@@ -13,11 +13,12 @@ interface RentalContextType {
 const RentalContext = createContext<RentalContextType | undefined>(undefined);
 
 export const RentalProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const tomorrow = addDays(startOfToday(), 1);
   const [range, setRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: startOfToday(),
-    to: addDays(startOfToday(), 3)
+    from: tomorrow,
+    to: addDays(tomorrow, 30)
   });
-  const [days, setDays] = useState(3);
+  const [days, setDays] = useState(30);
   const [selectedBike, setSelectedBike] = useState<Bike | null>(null);
 
   useEffect(() => {

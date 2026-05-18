@@ -68,7 +68,7 @@ export const DateRangeSelector = () => {
             >
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-bold uppercase tracking-widest text-foreground">
-                  {language === 'ru' ? 'Выберите даты' : 'Select Dates'}
+                  Select Dates
                 </h3>
                 <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-white/5 rounded-lg transition-colors">
                   <X className="w-4 h-4 text-muted" />
@@ -104,7 +104,7 @@ export const DateRangeSelector = () => {
                   </div>
                   {days >= 1 && (
                     <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">
-                      {days >= 30 ? '-25%' : days >= 7 ? '-15%' : '-8%'} {language === 'ru' ? 'скидка' : 'discount'}
+                      {days >= 30 ? '-25%' : days >= 7 ? '-15%' : '-8%'} discount
                     </span>
                   )}
                 </div>
@@ -112,7 +112,7 @@ export const DateRangeSelector = () => {
                   onClick={() => setIsOpen(false)}
                   className="bg-primary text-white px-8 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
                 >
-                  {language === 'ru' ? 'Готово' : 'Done'}
+                  Done
                 </button>
               </div>
             </motion.div>

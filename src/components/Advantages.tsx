@@ -6,7 +6,7 @@ export const Advantages = () => {
   const { language } = useLanguage();
   
   const content = {
-    ru: { discount: 'Скидка на долгий срок', delivery: '24/7 Доставка' },
+    ru: { discount: 'Long-term discount', delivery: '24/7 Delivery' },
     en: { discount: 'Long-term discount', delivery: '24/7 Delivery' },
     id: { discount: 'Diskon jangka panjang', delivery: '24/7 Pengiriman' },
     zh: { discount: '长期折扣', delivery: '24/7 送货' },

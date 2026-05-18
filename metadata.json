@@ -1,6 +1,6 @@
 {
-  "name": "Remix: Bali2Ride",
-  "description": "Bali2Ride - Professional bike rental in Bali. Best prices and 24/7 delivery.",
+  "name": "CocoDrive",
+  "description": "CocoDrive - Professional bike rental in Bali. Best prices and 24/7 delivery.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

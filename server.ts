@@ -1,7 +1,6 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
-import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -14,55 +13,101 @@ async function startServer() {
 
   // API Route for Booking Notifications
   app.post("/api/notify-booking", async (req, res) => {
-    const { bike, bookingDetails, customerDetails } = req.body;
+    const { bike, selectedColor, bookingDetails, customerDetails } = req.body;
 
-    const emailHtml = `
-      <h1>New Booking Request</h1>
-      <p><strong>Bike:</strong> ${bike.name}</p>
-      <p><strong>Period:</strong> ${bookingDetails.days} days (${bookingDetails.from} to ${bookingDetails.to})</p>
-      <p><strong>Total Price:</strong> ${bookingDetails.totalPrice} IDR</p>
-      <p><strong>Location:</strong> ${bookingDetails.location}</p>
-      <p><strong>Delivery Time:</strong> ${bookingDetails.deliveryTime}</p>
-      <hr />
-      <h3>Customer Details:</h3>
-      <p><strong>Name:</strong> ${customerDetails.name}</p>
-      <p><strong>Phone:</strong> ${customerDetails.phone}</p>
-      <p><strong>Email:</strong> ${customerDetails.email || 'Not provided'}</p>
-    `;
+    console.log(`[New Order]:
+    - Bike: ${bike.name} (${selectedColor || 'N/A'})
+    - District: ${bookingDetails.selectedDistrict || 'N/A'}
+    - Address: ${bookingDetails.location}
+    - Phone: ${customerDetails.phone}
+    - Customer: ${customerDetails.name}
+    - Period: ${bookingDetails.from} - ${bookingDetails.to} (${bookingDetails.days} days)
+    - Total: ${bookingDetails.totalPrice} IDR`);
 
-    // 1. Send Email to Operator
-    try {
-      const transporter = nodemailer.createTransport({
-        // For production, the user would provide these via .env
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: false, 
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      });
+    // 1. WhatsApp Notification
+    const whatsappMsg = `🔔 *New Booking Request*
+    
+🏍 *Bike:* ${bike.name} (${selectedColor || 'N/A'})
+📅 *Period:* ${bookingDetails.days} days
+🗓 *Dates:* ${bookingDetails.from} - ${bookingDetails.to}
+💰 *Total:* ${bookingDetails.totalPrice.toLocaleString()} IDR
+📍 *District:* ${bookingDetails.selectedDistrict || 'N/A'}
+🏠 *Address:* ${bookingDetails.location}
+⏰ *Delivery:* ${bookingDetails.deliveryTime}
 
-      if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-        await transporter.sendMail({
-          from: `"Bali Moto Booking" <${process.env.SMTP_USER}>`,
-          to: "m001008009@gmail.com",
-          subject: `New Booking: ${bike.name} by ${customerDetails.name}`,
-          html: emailHtml,
+👤 *Customer:* ${customerDetails.name}
+📱 *Phone:* ${customerDetails.phone}
+📧 *Email:* ${customerDetails.email || 'Not provided'}`;
+
+    const waToken = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
+    const waPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();
+    const waRecipientRaw = process.env.WHATSAPP_RECIPIENT_PHONE?.trim();
+    const waTemplateName = process.env.WHATSAPP_TEMPLATE_NAME?.trim() || "hello_world";
+    
+    // Check if we should use a template (e.g. if we have any template-specific data or just a template name)
+    // For this implementation, we check if the recipient is set and we have the credentials
+    if (waToken && waPhoneId && waRecipientRaw) {
+      // Clean recipient phone number (strip everything except digits)
+      const waRecipient = waRecipientRaw.replace(/\D/g, "");
+
+      try {
+        const url = `https://graph.facebook.com/v20.0/${waPhoneId}/messages`;
+        
+        let body: any;
+        
+        // Use the template name from env or fallback to hello_world
+        body = {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: waRecipient,
+          type: "template",
+          template: {
+            name: waTemplateName,
+            language: { code: "en" }, 
+            components: waTemplateName === "hello_world" ? [] : [
+              {
+                type: "body",
+                parameters: [
+                  { type: "text", text: customerDetails.name }, // {{1}} - Customer Name
+                  { type: "text", text: bike.name }, // {{2}} - Bike Name
+                  { type: "text", text: selectedColor || 'N/A' }, // {{3}} - Color
+                  { type: "text", text: `${bookingDetails.from} - ${bookingDetails.to}` }, // {{4}} - Dates
+                  { type: "text", text: bookingDetails.helmet1Size || 'N/A' }, // {{5}} - Helmet 1
+                  { type: "text", text: bookingDetails.helmet2Size || 'N/A' }, // {{6}} - Helmet 2
+                  { type: "text", text: bookingDetails.surfRack ? 'Yes' : 'No' }, // {{7}} - Surf Rack
+                  { type: "text", text: bookingDetails.selectedDistrict || 'N/A' }, // {{8}} - District
+                  { type: "text", text: bookingDetails.location || 'N/A' }, // {{9}} - Address
+                  { type: "text", text: bookingDetails.deliveryTime || 'N/A' }, // {{10}} - Time
+                  { type: "text", text: bookingDetails.totalPriceDisplay || `${bookingDetails.totalPrice.toLocaleString()} IDR` }, // {{11}} - Total Price
+                  { type: "text", text: bookingDetails.paymentMethod || 'N/A' }, // {{12}} - Method
+                  { type: "text", text: bookingDetails.paymentStatus || 'N/A' } // {{13}} - Status
+                ]
+              }
+            ]
+          }
+        };
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${waToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
         });
-        console.log("Email sent to operator");
-      } else {
-        console.warn("SMTP credentials missing. Email not sent, but logged to console.");
-        console.log("--- EMAIL CONTENT ---\n", emailHtml);
-      }
-    } catch (error) {
-      console.error("Error sending email:", error);
-    }
 
-    // 2. WhatsApp Notification (Theoretical / Logged)
-    // Note: Automated WhatsApp messages require a paid API like Twilio or Meta WhatsApp Business API.
-    // Here we log the intention and return a success status so the client can show the UI.
-    console.log(`[WhatsApp Simulation] Sending booking confirmation to ${customerDetails.phone}...`);
+        const waData = await response.json();
+        if (!response.ok) {
+          console.error("WhatsApp API Error:", JSON.stringify(waData, null, 2));
+        } else {
+          console.log("WhatsApp message sent successfully");
+        }
+      } catch (waError) {
+        console.error("Error sending WhatsApp message:", waError);
+      }
+    } else {
+      console.warn("WhatsApp credentials missing (Token, Phone ID, or Recipient). Skipping WhatsApp notification.");
+    }
 
     res.json({ success: true, message: "Notifications processed" });
   });

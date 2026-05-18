@@ -1,0 +1,213 @@
+{
+  "entities": {
+    "Bike": {
+      "title": "Motorcycle",
+      "description": "Details of a specific motorcycle available for rent",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["scooter", "sport", "adventure", "cruiser"] },
+        "engineSize": { "type": "number" },
+        "hasABS": { "type": "boolean" },
+        "hasBigTrunk": { "type": "boolean" },
+        "hasPhoneHolder": { "type": "boolean" },
+        "hasUSB": { "type": "boolean" },
+        "bestFor": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "pricePerDay": { "type": "number" },
+        "priceWeekly": { "type": "number" },
+        "priceMonthly": { "type": "number" },
+        "promoPrice": { "type": "number" },
+        "isPromoActive": { "type": "boolean" },
+        "order": { "type": "number" },
+        "image": { "type": "string" },
+        "description": { "type": "string" },
+        "features": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "name", "type", "engineSize", "pricePerDay", "priceWeekly", "priceMonthly", "image"]
+    },
+    "Booking": {
+      "title": "Rental Booking",
+      "description": "Details of a rental booking session",
+      "type": "object",
+      "properties": {
+        "bikeId": { "type": "string" },
+        "bikeName": { "type": "string" },
+        "selectedYear": { "type": "number" },
+        "selectedColor": { "type": "string" },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "days": { "type": "number" },
+        "totalPrice": { "type": "number" },
+        "location": { "type": "string" },
+        "deliveryTime": { "type": "string" },
+        "helmet1Size": { "type": "string" },
+        "helmet2Size": { "type": "string" },
+        "surfRack": { "type": "boolean" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "customerEmail": { "type": "string" },
+        "paymentMethod": { "type": "string", "enum": ["cash", "card", "bank", "crypto", "apple", "sbp", "qris"] },
+        "paymentTiming": { "type": "string", "enum": ["now", "delivery"] },
+        "paymentStatus": { "type": "string", "enum": ["unpaid", "paid", "refunded"] },
+        "status": { "type": "string", "enum": ["new", "searching", "confirmed", "active", "awaiting_return", "completed", "dispute", "resolved", "cancelled"] },
+        "assignedListingId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["bikeId", "bikeName", "startDate", "endDate", "days", "totalPrice", "customerName", "customerPhone", "customerEmail", "status", "createdAt"]
+    },
+    "Color": {
+      "title": "Color Reference",
+      "description": "Standard color definition for motorcycles",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "displayName": { "type": "string" },
+        "hexCode": { "type": "string" }
+      },
+      "required": ["id", "displayName", "hexCode"]
+    },
+    "Owner": {
+      "title": "Bike Owner",
+      "description": "Person or company who owns the motorcycle",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "areas": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "name"]
+    },
+    "BikeListing": {
+      "title": "Individual Bike Listing",
+      "description": "A specific physical bike unit with plate and ownership",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "bikeId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "licensePlate": { "type": "string" },
+        "status": { "type": "string", "enum": ["available", "rented", "maintenance", "hidden"] },
+        "pricePerDay": { "type": "number" },
+        "priceWeekly": { "type": "number" },
+        "priceMonthly": { "type": "number" },
+        "year": { "type": "number" },
+        "condition": { "type": "string" },
+        "rating": { "type": "number" },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["bikeId", "ownerId", "licensePlate", "status"]
+    },
+    "Area": {
+      "title": "Delivery Area",
+      "description": "A district area for delivery and search",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "keywords": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "name", "keywords"]
+    },
+    "AdminContacts": {
+      "title": "Admin Contacts",
+      "description": "Global contact information for the rental service",
+      "type": "object",
+      "properties": {
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "telegram": { "type": "string" },
+        "instagram": { "type": "string" },
+        "email": { "type": "string" }
+      }
+    },
+    "PromoCode": {
+      "title": "Promotion Code",
+      "description": "Discount code for rental bookings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "discount": { "type": "number", "description": "Percentage discount (1-100)" },
+        "isActive": { "type": "boolean" },
+        "validUntil": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "discount", "isActive"]
+    },
+    "ExchangeRates": {
+      "title": "Exchange Rates",
+      "description": "Foreign exchange rates for currency conversion",
+      "type": "object",
+      "properties": {
+        "rates": {
+          "type": "object",
+          "properties": {
+            "IDR": { "type": "number" },
+            "RUB": { "type": "number" },
+            "USD": { "type": "number" }
+          }
+        },
+        "timestamp": { "type": "number" },
+        "markupusdt": { "type": "number" },
+        "markuprub": { "type": "number" }
+      },
+      "required": ["rates", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/bikes/{bikeId}": {
+      "schema": "Bike",
+      "description": "Collection of bikes available for rent"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Collection of rental bookings"
+    },
+    "/colors/{colorId}": {
+      "schema": "Color",
+      "description": "Reference dictionary of available colors"
+    },
+    "/owners/{ownerId}": {
+      "schema": "Owner",
+      "description": "Collection of bike owners"
+    },
+    "/bike_listings/{listingId}": {
+      "schema": "BikeListing",
+      "description": "Individual physical bikes inventory"
+    },
+    "/areas/{areaId}": {
+      "schema": "Area",
+      "description": "Collection of delivery areas with polygon coordinates"
+    },
+    "/admin_contacts/{contactId}": {
+      "schema": "AdminContacts",
+      "description": "Global contact information (singleton-like)"
+    },
+    "/promocodes/{promoId}": {
+      "schema": "PromoCode",
+      "description": "Collection of discount promo codes"
+    },
+    "/exchange/{docId}": {
+      "schema": "ExchangeRates",
+      "description": "Exchange rates storage (singleton 'latest')"
+    },
+    "/admins/{adminId}": {
+      "schema": {
+        "title": "Admin",
+        "type": "object",
+        "properties": {
+          "email": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "description": "Authorized administrators"
+    }
+  }
+}

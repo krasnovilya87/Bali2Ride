@@ -56,6 +56,11 @@ export interface Translations {
     delivery: string;
     gear: string;
   };
+  booking: {
+    outOfZone: string;
+    payNow: string;
+    payOnDelivery: string;
+  };
 }
 
 const baseEn: Translations = {
@@ -80,28 +85,28 @@ const baseEn: Translations = {
     support: '24/7 Support',
     supportSub: 'Always available via WhatsApp',
   },
-  catalog: {
-    subtitle: 'Our Fleet',
-    title1: 'Choose your',
-    title2: 'perfect ride',
-    all: 'All Bikes',
-    scooters: 'Bikes',
-    enduro: 'Enduro',
-    sport: 'Motorcycles',
-    cruisers: 'Cruisers',
-    notFoundTitle: 'Didn\'t find what you need?',
-    notFoundDesc: 'We constantly update our fleet. Contact us on WhatsApp, and we\'ll find a bike specifically for you.',
-    whatsappBtn: 'Message on WhatsApp',
-    perDay: 'day',
-    dateFrom: 'From',
-    dateTo: 'To',
-  },
+    catalog: {
+      subtitle: 'Our Fleet',
+      title1: 'Choose your',
+      title2: 'perfect ride',
+      all: 'All',
+      scooters: 'Scooters',
+      enduro: 'Enduro',
+      sport: 'Sport',
+      cruisers: 'Cruisers',
+      notFoundTitle: 'Didn\'t find what you need?',
+      notFoundDesc: 'We constantly update our fleet. Contact us on WhatsApp, and we\'ll find a bike specifically for you.',
+      whatsappBtn: 'Message on WhatsApp',
+      perDay: 'day',
+      dateFrom: 'From',
+      dateTo: 'To',
+    },
   testimonials: {
     subtitle: 'Reviews',
     title: 'What our clients say',
   },
   footer: {
-    desc: 'Creating the best riding experience on the Island of Gods. Premium motorcycles for your perfect vacation.',
+    desc: 'Easy booking. Fair price',
     nav: 'Navigation',
     services: 'Services',
     contacts: 'Contacts',
@@ -110,37 +115,62 @@ const baseEn: Translations = {
     delivery: 'Hotel Delivery',
     gear: 'Gear Included',
   },
+  booking: {
+    outOfZone: 'Your address is outside our current logistics coverage area. Please submit a support request, and we\'ll try to work something out!',
+    payNow: 'Pay Now',
+    payOnDelivery: 'Pay on Delivery',
+  },
 };
 
 export const translations: Record<Language, Translations> = {
   en: baseEn,
   ru: {
     nav: { catalog: 'Каталог', terms: 'Условия', about: 'О нас', contact: 'Контакты', book: 'Забронировать' },
-    hero: { subtitle: 'Остров Бали / Приключения ждут', title1: 'Свобода на', title2: 'двух колесах', description: 'Аренда проверенных байков на Бали с доставкой до вашей виллы.', btnCatalog: 'Посмотреть каталог', btnTerms: 'Условия аренды', freeDelivery: 'Бесплатная доставка', deliverySub: 'В любую точку Южного Бали', insurance: 'Полная страховка', insuranceSub: 'Ваше спокойствие приоритет', support: '24/7 Поддержка', supportSub: 'Мы на связи в WhatsApp' },
-    catalog: { subtitle: 'Наш автопарк', title1: 'Выберите свой', title2: 'идеальный транспорт', all: 'Все байки', scooters: 'Байки', enduro: 'Эндуро', sport: 'Мотоциклы', cruisers: 'Круизеры', notFoundTitle: 'Не нашли модель?', notFoundDesc: 'Напишите нам в WhatsApp.', whatsappBtn: 'Написать в WhatsApp', perDay: 'дней', dateFrom: 'С', dateTo: 'По' },
-    testimonials: { subtitle: 'Отзывы', title: 'Что говорят клиенты' },
-    footer: { desc: 'Премиум байки для вашего отпуска.', nav: 'Навигация', services: 'Услуги', contacts: 'Контакты', dayRent: 'Аренда на день', longRent: 'Долгосрочная аренда', delivery: 'Доставка к отелю', gear: 'Экипировка в комплекте' }
+    hero: { subtitle: 'Остров Бали / Приключения ждут', title1: 'Свобода на', title2: 'двух колесах', description: 'Аренда надежных байков на Бали с доставкой к вашей вилле.', btnCatalog: 'Смотреть каталог', btnTerms: 'Условия аренды', freeDelivery: 'Бесплатная доставка', deliverySub: 'В любую точку Южного Бали', insurance: 'Полная страховка', insuranceSub: 'Ваше спокойствие — наш приоритет', support: 'Поддержка 24/7', supportSub: 'Всегда на связи в WhatsApp' },
+    catalog: { subtitle: 'Наш парк', title1: 'Выберите свой', title2: 'идеальный байк', all: 'All', scooters: 'Scooters', enduro: 'Adventure', sport: 'Sport', cruisers: 'Cruisers', notFoundTitle: 'Не нашли то, что нужно?', notFoundDesc: 'Свяжитесь с нами в WhatsApp.', whatsappBtn: 'Написать в WhatsApp', perDay: 'день', dateFrom: 'С', dateTo: 'По' },
+    testimonials: { subtitle: 'Отзывы', title: 'Что говорят наши клиенты' },
+    footer: { desc: 'Easy booking. Fair price', nav: 'Навигация', services: 'Услуги', contacts: 'Контакты', dayRent: 'Посуточная аренда', longRent: 'Долгосрочная аренда', delivery: 'Доставка в отель', gear: 'Экипировка включена' },
+    booking: {
+      outOfZone: 'Ваш адрес находится за пределами нашей текущей зоны логистики. Пожалуйста, отправьте запрос в службу поддержки, и мы постараемся что-нибудь придумать!',
+      payNow: 'Оплатить сейчас',
+      payOnDelivery: 'При получении',
+    }
   },
   id: {
     nav: { catalog: 'Katalog', terms: 'Ketentuan', about: 'Tentang', contact: 'Kontak', book: 'Pesan Sekarang' },
     hero: { subtitle: 'Pulau Bali / Petualangan Menanti', title1: 'Kebebasan di', title2: 'dua roda', description: 'Sewa motor terpercaya di Bali dengan pengantaran ke vila Anda.', btnCatalog: 'Lihat Katalog', btnTerms: 'Syarat Sewa', freeDelivery: 'Gratis Antar', deliverySub: 'Ke mana saja di Bali Selatan', insurance: 'Asuransi Lengkap', insuranceSub: 'Ketenangan Anda prioritas kami', support: 'Dukungan 24/7', supportSub: 'Tersedia melalui WhatsApp' },
     catalog: { subtitle: 'Armada Kami', title1: 'Pilih kendaraan', title2: 'terbaik Anda', all: 'Semua Motor', scooters: 'Motor', enduro: 'Enduro', sport: 'Motor Sport', cruisers: 'Cruiser', notFoundTitle: 'Tidak menemukan model?', notFoundDesc: 'Hubungi WhatsApp kami.', whatsappBtn: 'Pesan via WhatsApp', perDay: 'hari', dateFrom: 'Dari', dateTo: 'Ke' },
     testimonials: { subtitle: 'Ulasan', title: 'Apa kata mereka' },
-    footer: { desc: 'Pengalaman berkendara terbaik di Pulau Dewata.', nav: 'Navigasi', services: 'Layanan', contacts: 'Kontak', dayRent: 'Sewa Harian', longRent: 'Sewa Jangka Panjang', delivery: 'Antar ke Hotel', gear: 'Termasuk Helm & Jaket' }
+    footer: { desc: 'Pengalaman berkendara terbaik di Pulau Dewata.', nav: 'Navigasi', services: 'Layanan', contacts: 'Kontak', dayRent: 'Sewa Harian', longRent: 'Sewa Jangka Panjang', delivery: 'Antar ke Hotel', gear: 'Termasuk Helm & Jaket' },
+    booking: { 
+      outOfZone: 'Alamat Anda berada di luar zona logistik kami saat ini. Silakan hubungi dukungan kami!',
+      payNow: 'Bayar Sekarang',
+      payOnDelivery: 'Bayar Saat Pengantaran'
+    }
   },
   zh: {
     nav: { catalog: '产品目录', terms: '租借条款', about: '关于我们', contact: '联系我们', book: '立即预订' },
     hero: { subtitle: '巴厘岛 / 冒险等待', title1: '自由的', title2: '双轮之旅', description: '在巴厘岛租用可靠的自行车，送货到您的别墅。', btnCatalog: '查看目录', btnTerms: '租借条款', freeDelivery: '免费送货', deliverySub: '巴厘岛南部任何地方', insurance: '全额保险', insuranceSub: '您的安心是我们的首要任务', support: '24/7 支持', supportSub: '随时通过 WhatsApp 联系' },
     catalog: { subtitle: '我们的车队', title1: '选择你的', title2: '完美骑行', all: '所有车型', scooters: '自行车', enduro: '越野车', sport: '摩托车', cruisers: '巡航车', notFoundTitle: '没找到您需要的？', notFoundDesc: '在 WhatsApp 上联系我们。', whatsappBtn: 'WhatsApp 联系', perDay: '天', dateFrom: '从', dateTo: '至' },
     testimonials: { subtitle: '评价', title: '客户评价' },
-    footer: { desc: '在众神之岛创造最好的骑行体验。', nav: '导航', services: '服务', contacts: '联系方式', dayRent: '日租', longRent: '长租', delivery: '酒店送货', gear: '包含装备' }
+    footer: { desc: '在众神之岛创造最好的骑行体验。', nav: '导航', services: '服务', contacts: '联系方式', dayRent: '日租', longRent: '长租', delivery: '酒店送货', gear: '包含装备' },
+    booking: { 
+      outOfZone: '您的地址超出了我们当前的物流范围。请联系客服！',
+      payNow: '现在支付',
+      payOnDelivery: '货到付款'
+    }
   },
   de: {
     nav: { catalog: 'Katalog', terms: 'Bedingungen', about: 'Über uns', contact: 'Kontakt', book: 'Jetzt buchen' },
     hero: { subtitle: 'Insel Bali / Das Abenteuer wartet', title1: 'Freiheit auf', title2: 'zwei Rädern', description: 'Mieten Sie zuverlässige Bikes auf Bali mit Lieferung zu Ihrer Villa.', btnCatalog: 'Katalog ansehen', btnTerms: 'Mietbedingungen', freeDelivery: 'Kostenlose Lieferung', deliverySub: 'Überall im Süden Balis', insurance: 'Vollversicherung', insuranceSub: 'Ihre Sicherheit ist Priorität', support: '24/7 Support', supportSub: 'Immer über WhatsApp erreichbar' },
     catalog: { subtitle: 'Unsere Flotte', title1: 'Wählen Sie Ihre', title2: 'perfekte Fahrt', all: 'Alle Bikes', scooters: 'Bikes', enduro: 'Enduro', sport: 'Motorräder', cruisers: 'Cruiser', notFoundTitle: 'Nicht das Richtige gefunden?', notFoundDesc: 'Kontaktieren Sie us over WhatsApp.', whatsappBtn: 'WhatsApp Nachricht', perDay: 'Tag', dateFrom: 'Von', dateTo: 'Bis' },
     testimonials: { subtitle: 'Bewertungen', title: 'Was unsere Kunden sagen' },
-    footer: { desc: 'Das beste Fahrerlebnis auf der Insel der Götter.', nav: 'Navigation', services: 'Dienstleistungen', contacts: 'Kontakt', dayRent: 'Tagesmiete', longRent: 'Langzeitmiete', delivery: 'Hotellieferung', gear: 'Ausrüstung inklusive' }
+    footer: { desc: 'Das beste Fahrerlebnis auf der Insel der Götter.', nav: 'Navigation', services: 'Dienstleistungen', contacts: 'Kontakt', dayRent: 'Tagesmiete', longRent: 'Langzeitmiete', delivery: 'Hotellieferung', gear: 'Ausrüstung inklusive' },
+    booking: { 
+      outOfZone: 'Ihre Adresse liegt außerhalb unserer aktuellen Logistikzone. Bitte kontaktieren Sie den Support!',
+      payNow: 'Jetzt bezahlen',
+      payOnDelivery: 'Zahlung bei Lieferung'
+    }
   },
   // Adding the other popular languages with English fallbacks for the initial rollout
   es: baseEn, fr: baseEn, pt: baseEn, ja: baseEn, ko: baseEn,

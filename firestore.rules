@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Deny Catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Global Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // 3. Collection Rules
+
+    // Bikes
+    match /bikes/{bikeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Bookings (Creation only for customers, read/manage for admins)
+    match /bookings/{bookingId} {
+      allow create: if true; // Public can book
+      allow read, write: if isAdmin();
+    }
+
+    // Colors
+    match /colors/{colorId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Owners
+    match /owners/{ownerId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Bike Listings
+    match /bike_listings/{listingId} {
+      allow read: if true; // Public can see what's available
+      allow write: if isAdmin();
+    }
+
+    // Areas
+    match /areas/{areaId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Promo Codes
+    match /promocodes/{promoId} {
+      allow read: if true; // Public can verify codes
+      allow write: if isAdmin();
+    }
+
+    // Admin Contacts
+    match /admin_contacts/{contactId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Exchange
+    function isValidExchange(data) {
+      return data.rates is map && 
+             data.rates.IDR is number && 
+             data.rates.RUB is number && 
+             data.timestamp is number;
+    }
+    match /exchange/{docId} {
+      allow read: if true;
+      allow write: if true; // Allow client updates to keep rates fresh
+    }
+
+    // Admins collection
+    match /admins/{adminId} {
+      allow read: if isSignedIn() && request.auth.uid == adminId;
+      allow write: if false; // Deny all client writes. Provisioning must be done via Console.
+    }
+  }
+}

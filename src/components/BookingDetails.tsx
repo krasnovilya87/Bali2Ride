@@ -1,16 +1,22 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Calendar, ShieldCheck, Zap, Info, X, MapPin, Clock, User, Phone, Mail, Check, Search, Plus, Minus, Navigation } from 'lucide-react';
-import { Bike } from '../types';
+import { motion, AnimatePresence, useSpring, useTransform } from 'motion/react';
+import { ChevronLeft, Calendar, ShieldCheck, Zap, Info, X, MapPin, Clock, User, MessageCircle, Mail, Check, Search, Plus, Minus, Navigation, Maximize2, Minimize2, CreditCard, Banknote, Coins, Building2, Tag, Loader2, Smartphone, Headset, Truck, Landmark, Globe } from 'lucide-react';
+import { addBike, updateBike, deleteBike, updateBikesOrder, getBookings, uploadFile, getBikes, getColors, addColor, getOwners, addOwner, getBikeListings, addBikeListing, updateListingStatus, updateBookingStatus, getAdminContacts, verifyPromoCode, getLatestExchangeRates, updateExchangeRates } from '../services/dataService';
+import { Bike, AdminContacts, PromoCode } from '../types';
 import { useLanguage } from '../LanguageContext';
 import { useRental } from '../RentalContext';
 import { IDR_TO_USD } from '../constants';
-import { format, setHours, setMinutes } from 'date-fns';
+import { cn, formatPrice } from '../lib/utils';
+import { BikeInfoModal } from './BikeInfoModal';
+import { startPayment } from '../services/paymentService';
+import { format, setHours, setMinutes, addDays } from 'date-fns';
 import { ru, enUS } from 'date-fns/locale';
 import { DayPicker, DateRange } from 'react-day-picker';
 import { startOfToday } from 'date-fns';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
 
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
@@ -34,13 +40,75 @@ const DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
+import { normalizePhoneNumber, isPhoneValid } from '../lib/phoneUtils';
+
 interface BookingDetailsProps {
   bike: Bike;
   onClose: () => void;
+  onPrivacyClick?: () => void;
+  onTermsClick?: () => void;
 }
 
-const LocationPicker = ({ position, setPosition, location, setLocation, language }: { position: L.LatLng, setPosition: (p: L.LatLng) => void, location: string, setLocation: (l: string) => void, language: string }) => {
-  const [isSearching, setIsSearching] = useState(false);
+import { isPointInPolygon } from '../lib/geometry';
+
+interface AreaFeature {
+  type: string;
+  properties: {
+    name: string;
+  };
+  geometry: {
+    type: 'Polygon';
+    coordinates: number[][][];
+  };
+  id: string;
+}
+
+interface AreaCollection {
+  type: string;
+  features: AreaFeature[];
+}
+
+const MapPicker = ({ 
+  position, 
+  setPosition, 
+  setLocation, 
+  language, 
+  isFullscreen, 
+  setIsFullscreen,
+  selectedDistrict,
+  setSelectedDistrict
+}: { 
+  position: L.LatLng, 
+  setPosition: (p: L.LatLng) => void, 
+  setLocation: (l: string) => void, 
+  language: string, 
+  isFullscreen: boolean, 
+  setIsFullscreen: (f: boolean) => void,
+  selectedDistrict: string | null | undefined,
+  setSelectedDistrict: (d: string | null) => void
+}) => {
+  const mapRef = useRef<L.Map | null>(null);
+  const [areas, setAreas] = useState<AreaCollection | null>(null);
+
+  useEffect(() => {
+    fetch('/area.json')
+      .then(res => res.json())
+      .then(data => setAreas(data))
+      .catch(err => console.error("Error loading areas:", err));
+  }, []);
+
+  useEffect(() => {
+    if (!areas || !position) return;
+    
+    let foundDistrict: string | null = null;
+    for (const feature of areas.features) {
+      if (isPointInPolygon([position.lng, position.lat], feature.geometry.coordinates)) {
+        foundDistrict = feature.properties.name;
+        break;
+      }
+    }
+    setSelectedDistrict(foundDistrict);
+  }, [position, areas]);
 
   const fetchAddress = async (lat: number, lon: number) => {
     try {
@@ -51,23 +119,6 @@ const LocationPicker = ({ position, setPosition, location, setLocation, language
       }
     } catch (error) {
       console.error("Geocoding error:", error);
-    }
-  };
-
-  const handleSearch = async () => {
-    if (!location.trim()) return;
-    setIsSearching(true);
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`);
-      const data = await response.json();
-      if (data && data.length > 0) {
-        const newPos = new L.LatLng(parseFloat(data[0].lat), parseFloat(data[0].lon));
-        setPosition(newPos);
-      }
-    } catch (error) {
-      console.error("Search error:", error);
-    } finally {
-      setIsSearching(false);
     }
   };
 
@@ -82,13 +133,56 @@ const LocationPicker = ({ position, setPosition, location, setLocation, language
 
   const MapControls = () => {
     const map = useMap();
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      if (containerRef.current) {
+        L.DomEvent.disableClickPropagation(containerRef.current);
+      }
+    }, []);
     
     return (
-      <div className="absolute bottom-4 right-4 z-[400] flex flex-col gap-2">
+      <div ref={containerRef} className="absolute bottom-4 right-4 z-[400] flex flex-col gap-3">
+        {/* Zoom Controls - Desktop Only */}
+        <div className="hidden md:flex flex-col gap-2">
+          <button 
+            type="button"
+            onClick={(e) => { 
+              e.preventDefault();
+              e.stopPropagation(); 
+              map.zoomIn(); 
+            }}
+            className="w-10 h-10 bg-white shadow-xl rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all border border-border/50 active:scale-90"
+            id="map-zoom-in"
+            title="Zoom in"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+          <button 
+            type="button"
+            onClick={(e) => { 
+              e.preventDefault();
+              e.stopPropagation(); 
+              map.zoomOut(); 
+            }}
+            className="w-10 h-10 bg-white shadow-xl rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all border border-border/50 active:scale-90"
+            id="map-zoom-out"
+            title="Zoom out"
+          >
+            <Minus className="w-5 h-5" />
+          </button>
+        </div>
+
         <button 
-          onClick={(e) => { e.stopPropagation(); handleMyLocation(); }}
-          className="w-10 h-10 bg-white shadow-xl rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all border border-border/50"
-          title={language === 'ru' ? 'Мое местоположение' : 'My location'}
+          type="button"
+          onClick={(e) => { 
+            e.preventDefault();
+            e.stopPropagation(); 
+            handleMyLocation(); 
+          }}
+          className="w-10 h-10 bg-white shadow-xl rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all border border-border/50 active:scale-90"
+          id="map-my-location"
+          title="My location"
         >
           <Navigation className="w-5 h-5 fill-current" />
         </button>
@@ -108,12 +202,22 @@ const LocationPicker = ({ position, setPosition, location, setLocation, language
       map.flyTo(position, map.getZoom());
     }, [position]);
 
+    useEffect(() => {
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 300);
+    }, [isFullscreen]);
+
     return null;
   };
 
   return (
-    <div className="space-y-3">
-      <div className="h-64 w-full rounded-2xl overflow-hidden border border-border relative group">
+    <div className={`transition-all duration-300 ${
+      isFullscreen 
+        ? 'fixed inset-0 z-[2000] bg-background p-4' 
+        : 'h-64 w-full rounded-2xl overflow-hidden border border-border relative group'
+    }`}>
+      <div className={`w-full h-full relative ${isFullscreen ? 'rounded-3xl overflow-hidden border-4 border-primary/20 shadow-2xl' : ''}`}>
         <MapContainer 
           center={position} 
           zoom={16} 
@@ -121,6 +225,7 @@ const LocationPicker = ({ position, setPosition, location, setLocation, language
           className="h-full w-full"
           attributionControl={false}
           zoomControl={false}
+          ref={mapRef}
         >
           <TileLayer
             url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
@@ -130,34 +235,30 @@ const LocationPicker = ({ position, setPosition, location, setLocation, language
           <MapControls />
         </MapContainer>
         
-        <div className="absolute top-4 right-4 z-[400]">
-          <div className="bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-tight shadow-sm pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity text-right">
-            {language === 'ru' ? 'Клик для выбора' : 'Click to pick'}
-          </div>
+        <div className="absolute top-4 right-4 z-[400] flex flex-col gap-2">
+          <button 
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className="w-10 h-10 bg-white/90 backdrop-blur shadow-xl rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all border border-border/50"
+          >
+            {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+          </button>
         </div>
-      </div>
 
-      <div className="relative group">
-        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary opacity-60 z-10" />
-        <input 
-          type="text" 
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          placeholder={language === 'ru' ? 'Введите адрес или отель...' : 'Enter address or hotel...'}
-          className="w-full bg-surface border border-border rounded-2xl py-4 pl-11 pr-14 text-sm font-medium focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all outline-none"
-        />
-        <button 
-          onClick={handleSearch}
-          disabled={isSearching}
-          className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-primary hover:bg-primary/10 rounded-xl transition-all disabled:opacity-50"
-        >
-          {isSearching ? (
-            <div className="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-          ) : (
-            <Search className="w-5 h-5" />
-          )}
-        </button>
+        {/* Removed fullscreen tooltip */}
+        
+        {/* District Badge */}
+        {selectedDistrict && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute bottom-4 left-4 z-[400] flex items-center gap-1.5 px-2 py-1 bg-white/90 backdrop-blur shadow-lg rounded-lg border border-border/50"
+          >
+            <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
+            <span className="text-[8px] font-bold text-primary uppercase tracking-wider">
+              {selectedDistrict}
+            </span>
+          </motion.div>
+        )}
       </div>
     </div>
   );
@@ -168,8 +269,9 @@ const CustomTimePicker = ({ value, onChange, language }: { value: string, onChan
   
   const timeSlots = useMemo(() => {
     const slots = [];
-    for (let h = 0; h < 24; h++) {
+    for (let h = 8; h <= 23; h++) {
       for (let m = 0; m < 60; m += 15) {
+        if (h === 23 && m > 0) continue; // Stop at 23:00
         slots.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
       }
     }
@@ -236,26 +338,128 @@ const CustomTimePicker = ({ value, onChange, language }: { value: string, onChan
   );
 };
 
-const YEARS = [2026, 2025, 2024, 2023, 2022];
+const HELMET_1_SIZES = ['M', 'L', 'XL'];
+const HELMET_2_SIZES = ['-', 'M', 'L', 'XL'];
 
-export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose }) => {
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('[Firebase Error Detail]:', JSON.stringify(errInfo, null, 2));
+  console.error(`[Firebase Error]: Operation ${operationType} on ${path} failed:`, error);
+  throw new Error(JSON.stringify(errInfo));
+}
+
+export const BookingDetails: React.FC<BookingDetailsProps> = ({ 
+  bike, 
+  onClose,
+  onPrivacyClick,
+  onTermsClick
+}) => {
   const { language, t } = useLanguage();
   const { range, days, setRange } = useRental();
-  const [selectedYear, setSelectedYear] = useState(2025);
   const [selectedColor, setSelectedColor] = useState(bike.colors?.[0]?.name || '');
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [location, setLocation] = useState(language === 'ru' ? 'Открытая парковка для мотоциклов в аэропорту' : 'Open motorcycle parking at the airport');
+  const [location, setLocation] = useState('Open motorcycle parking at the airport');
   const [mapPosition, setMapPosition] = useState<L.LatLng>(new L.LatLng(-8.7447, 115.1638)); // Precise Bali Airport Bike Parking
   const [deliveryTime, setDeliveryTime] = useState('09:00');
+  const [helmet1Size, setHelmet1Size] = useState('XL');
+  const [helmet2Size, setHelmet2Size] = useState('-');
+  const [surfRack, setSurfRack] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [country, setCountry] = useState('id');
-  const [dialCode, setDialCode] = useState('62');
+  const [country, setCountry] = useState('');
+  const [dialCode, setDialCode] = useState('');
   const [isVerified, setIsVerified] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState(false);
   const [isDiscountInfoOpen, setIsDiscountInfoOpen] = useState(false);
+  const [isBikeInfoOpen, setIsBikeInfoOpen] = useState(false);
   const [email, setEmail] = useState('');
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
+  const [adminContacts, setAdminContacts] = useState<AdminContacts | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(true);
+
+  // Promo Code State
+  const [showPromoInput, setShowPromoInput] = useState(false);
+  const [promoInput, setPromoInput] = useState('');
+  const [promoError, setPromoError] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null);
+  const [verifyingPromo, setVerifyingPromo] = useState(false);
+
+  useEffect(() => {
+    getAdminContacts().then(setAdminContacts);
+  }, []);
+
+  const [selectedDistrict, setSelectedDistrict] = useState<string | null | undefined>(undefined);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const images = useMemo(() => {
+    if (bike.colors && selectedColor) {
+      const colorObj = bike.colors.find(c => c.name === selectedColor);
+      const colorImages = (colorObj?.imageUrls || colorObj?.images || (colorObj?.image || colorObj?.imageUrl ? [colorObj?.image || colorObj?.imageUrl] : [])) as string[];
+      const generalPhotos = (bike.generalPhotos || []) as string[];
+      
+      const otherColors = bike.colors.filter(c => c.name !== selectedColor);
+      const otherColorImages = otherColors.reduce((acc, c) => {
+        const cImgs = (c.imageUrls || c.images || (c.image || c.imageUrl ? [c.image || c.imageUrl] : [])) as string[];
+        return [...acc, ...cImgs];
+      }, [] as string[]);
+
+      if (colorImages.length > 0 || generalPhotos.length > 0 || otherColorImages.length > 0) {
+        return [...colorImages, ...generalPhotos, ...otherColorImages];
+      }
+    }
+    return bike.images || [bike.image];
+  }, [bike.images, bike.image, bike.colors, bike.generalPhotos, selectedColor]);
+
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  // Reset gallery to first image when color changes
+  useEffect(() => {
+    setCurrentImageIndex(0);
+    if (carouselRef.current) {
+      carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+    }
+  }, [selectedColor]);
 
   const handleVerifyWhatsApp = () => {
     if (!isValid || isVerifying || isVerified) return;
@@ -277,26 +481,8 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
   };
   
   const isValid = useMemo(() => {
-    if (!phone) return false;
-    
-    // Strict digit counts based on user's manual mask list
-    const MASK_DIGIT_COUNTS: Record<string, number> = {
-      in: 10, cn: 11, us: 10, ca: 10, id: 11, pk: 10, br: 11, ng: 10, bd: 10,
-      ru: 10, kz: 10, mx: 10, jp: 10, et: 9, ph: 11, eg: 10, vn: 9, cd: 9,
-      tr: 10, ir: 10, de: 11, th: 9, gb: 11, fr: 9, it: 10, za: 9, kr: 10,
-      co: 10, es: 9, ar: 10, dz: 9, ua: 9, iq: 10, pl: 9, ma: 9, sa: 9,
-      uz: 9, pe: 9, my: 9, au: 9, nl: 9, ro: 9, cl: 9, gt: 8, ec: 9,
-      cz: 9, gr: 10, pt: 9, az: 10, se: 9, ae: 9, hu: 9, by: 9, il: 9,
-      ch: 9, at: 11, sg: 8, dk: 8, fi: 10, sk: 9, no: 8, ie: 9, nz: 9,
-      qa: 8, ee: 8
-    };
-
-    const requiredDigits = MASK_DIGIT_COUNTS[country] || 10;
-    const totalDigits = phone.replace(/\D/g, '').length;
-    
-    // Valid only if national digits matches required count exactly
-    return (totalDigits - dialCode.length) === requiredDigits;
-  }, [phone, country, dialCode]);
+    return isPhoneValid(phone);
+  }, [phone]);
 
   useEffect(() => {
     if (isValid && !isVerified && !isVerifying && !verificationError) {
@@ -320,62 +506,339 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isCalendarOpen]);
 
+  const [isSearching, setIsSearching] = useState(false);
+  const handleSearch = async () => {
+    if (!location.trim()) return;
+    setIsSearching(true);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`);
+      const data = await response.json();
+      if (data && data.length > 0) {
+        const newPos = new L.LatLng(parseFloat(data[0].lat), parseFloat(data[0].lon));
+        setMapPosition(newPos);
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const [availabilityStatus, setAvailabilityStatus] = useState<'idle' | 'searching' | 'available' | 'unavailable'>('idle');
+
+  useEffect(() => {
+    if (range.from && range.to) {
+      setAvailabilityStatus('searching');
+      const timer = setTimeout(() => {
+        // Mock: Always available
+        setAvailabilityStatus('available');
+      }, 1500);
+      return () => clearTimeout(timer);
+    } else {
+      setAvailabilityStatus('idle');
+    }
+  }, [range.from, range.to]);
+
   const handleSelect = (newRange: DateRange | undefined) => {
     setRange({ from: newRange?.from, to: newRange?.to });
   };
   
-  // Calculate price based on year (older = cheaper)
-  const basePrice = bike.pricePerDay;
-  const yearMultiplier = 1 - (2026 - selectedYear) * 0.1; // 10% discount per year older
-  const currentPrice = Math.round(basePrice * yearMultiplier);
-  
-  const displayImage = bike.imagesByYear?.[selectedYear] || bike.image;
-  
-  // Apply duration discount
-  const discountPercent = days >= 30 ? 25 : days >= 7 ? 15 : 8;
-  const finalPricePerDay = Math.round(currentPrice * (1 - discountPercent / 100));
-  const totalPrice = finalPricePerDay * days;
-  const formatPrice = (p: number) => new Intl.NumberFormat('id-ID').format(p);
+  // Calculate price based on tiered pricing and promo
+  const finalPricePerDay = useMemo(() => {
+    // Promo works only for rentals < 7 days
+    if (days < 7 && bike.isPromoActive && bike.promoPrice && bike.promoPrice > 0) {
+      return bike.promoPrice;
+    }
 
-  const getUSD = (p: number) => `~$${Math.round(p / IDR_TO_USD)}`;
+    // Tiered pricing for 7+ days
+    if (days >= 30) {
+      return bike.priceMonthly;
+    } else if (days >= 7) {
+      return bike.priceWeekly;
+    }
+
+    return bike.pricePerDay;
+  }, [bike, days]);
+
+  const totalPriceBeforePromo = finalPricePerDay * days;
+  const totalPrice = appliedPromo 
+    ? Math.round(totalPriceBeforePromo * (1 - appliedPromo.discount / 100))
+    : totalPriceBeforePromo;
+
+  const handleApplyPromo = async () => {
+    if (!promoInput.trim()) return;
+    setVerifyingPromo(true);
+    setPromoError('');
+    try {
+      const promo = await verifyPromoCode(promoInput);
+      if (promo) {
+        setAppliedPromo(promo);
+        setPromoError('');
+      } else {
+        setPromoError('Invalid or expired code');
+        setAppliedPromo(null);
+      }
+    } catch (error) {
+      setPromoError('Error verifying code');
+    } finally {
+      setVerifyingPromo(false);
+    }
+  };
+  const [exchangeRates, setExchangeRates] = useState<{ 
+    idr: number, 
+    rub: number, 
+    markupusdt: number, 
+    markuprub: number 
+  } | null>(null);
+
+  useEffect(() => {
+    const loadRates = async () => {
+      const now = Date.now();
+      const ONE_DAY = 24 * 60 * 60 * 1000;
+      const DEFAULT_MARKUP = 0.05; // 5%
+
+      // 1. Try Local Storage first (Memory/Cache)
+      const cached = localStorage.getItem('exchange');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (now - parsed.timestamp < ONE_DAY && parsed.rates?.IDR && parsed.rates?.RUB) {
+            setExchangeRates({ 
+              idr: parsed.rates.IDR, 
+              rub: parsed.rates.RUB,
+              markupusdt: parsed.markupusdt ?? DEFAULT_MARKUP,
+              markuprub: parsed.markuprub ?? DEFAULT_MARKUP
+            });
+            return;
+          }
+        } catch (e) {
+          console.error('Failed to parse cached rates');
+        }
+      }
+
+      try {
+        // 2. Try Firestore
+        const fsRates = await getLatestExchangeRates();
+        if (fsRates && (now - fsRates.timestamp < ONE_DAY)) {
+          // Handle both older and newer data structures
+          const idrRate = (fsRates.rates && fsRates.rates.IDR && fsRates.rates.IDR > 1) ? fsRates.rates.IDR : (fsRates.idr || 16100);
+          const rubRate = (fsRates.rates && fsRates.rates.RUB && fsRates.rates.RUB > 1) ? fsRates.rates.RUB : (fsRates.rub || 95);
+          
+          // Sanitize markups: if stored as e.g. 5 for 5%, convert to 0.05
+          let mUSDT = fsRates.markupusdt !== undefined ? fsRates.markupusdt : DEFAULT_MARKUP;
+          let mRUB = fsRates.markuprub !== undefined ? fsRates.markuprub : DEFAULT_MARKUP;
+          
+          if (mUSDT > 1) mUSDT = mUSDT / 100;
+          if (mRUB > 1) mRUB = mRUB / 100;
+
+          setExchangeRates({ 
+            idr: idrRate, 
+            rub: rubRate,
+            markupusdt: mUSDT,
+            markuprub: mRUB
+          });
+          // Sync to localStorage
+          localStorage.setItem('exchange', JSON.stringify(fsRates));
+          return;
+        }
+
+        // 3. If missing or old, fetch from API
+        const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+        const data = await res.json();
+        const rates = {
+          USD: data.rates.USD,
+          IDR: data.rates.IDR,
+          RUB: data.rates.RUB
+        };
+        
+        const exchangeData = {
+          rates,
+          timestamp: now,
+          markupusdt: DEFAULT_MARKUP,
+          markuprub: DEFAULT_MARKUP
+        };
+
+        // Cache everywhere
+        await updateExchangeRates(exchangeData);
+        localStorage.setItem('exchange', JSON.stringify(exchangeData));
+        
+        setExchangeRates({ 
+          idr: rates.IDR, 
+          rub: rates.RUB,
+          markupusdt: DEFAULT_MARKUP,
+          markuprub: DEFAULT_MARKUP
+        });
+      } catch (e) {
+        console.error('Failed to load rates', e);
+        // Final fallback to any available cache regardless of age if network fails
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            setExchangeRates({ 
+              idr: parsed.rates.IDR, 
+              rub: parsed.rates.RUB,
+              markupusdt: parsed.markupusdt ?? DEFAULT_MARKUP,
+              markuprub: parsed.markuprub ?? DEFAULT_MARKUP
+            });
+          } catch (err) {
+            setExchangeRates({ idr: 16100, rub: 95, markupusdt: DEFAULT_MARKUP, markuprub: DEFAULT_MARKUP });
+          }
+        } else {
+          setExchangeRates({ idr: 16100, rub: 95, markupusdt: DEFAULT_MARKUP, markuprub: DEFAULT_MARKUP });
+        }
+      }
+    };
+    loadRates();
+  }, []);
+
+  const getUSD = (p: number, showApprox = false, markupPercent = 0) => {
+    const idrToUsd = 1 / (exchangeRates?.idr || 16100);
+    const withFee = idrToUsd * (1 + (markupPercent / 100));
+    return `${showApprox ? '~' : ''}$${Math.round(p * withFee)}`;
+  };
+  
+  const getRUB = (p: number) => {
+    // Correct logic: IDR price divided by (IDR per RUB rate)
+    // IDR per RUB = (IDR per USD) / (RUB per USD)
+    const idrPerUsd = exchangeRates?.idr || 16100;
+    const rubPerUsd = exchangeRates?.rub || 95;
+    const idrPerRub = idrPerUsd / rubPerUsd;
+    
+    // Use ?? to allow 0 markup
+    const markup = exchangeRates?.markuprub ?? 0.05;
+    
+    // Price in RUB = (IDR / Rate) * (1 + Fee)
+    const result = (p / idrPerRub) * (1 + markup);
+    return `₽ ${Math.round(result).toLocaleString()}`;
+  };
+
+  const getUSDT = (p: number) => {
+    // IDR price divided by IDR per USD rate
+    const idrPerUsd = exchangeRates?.idr || 16100;
+    const markup = exchangeRates?.markupusdt ?? 0.05;
+    
+    const result = (p / idrPerUsd) * (1 + markup);
+    return `${Math.round(result)} USDT`;
+  };
+
+  // Animation for price
+  const springConfig = { damping: 30, stiffness: 200 };
+  const animatedPrice = useSpring(totalPrice, springConfig);
+
+  useEffect(() => {
+    animatedPrice.set(totalPrice);
+  }, [totalPrice, animatedPrice]);
+
+  const displayPrice = useTransform(animatedPrice, (latest) => Math.round(latest));
+
+  const PriceRoller = ({ value }: { value: any }) => {
+    const [val, setVal] = useState(totalPrice);
+    
+    useEffect(() => {
+      const unsubscribe = displayPrice.on('change', (v) => {
+        setVal(v);
+      });
+      return () => unsubscribe();
+    }, []);
+
+    return <span>{formatPrice(val)}</span>;
+  };
 
   const [showPayment, setShowPayment] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'method' | 'processing' | 'success'>('method');
+  const [paymentTiming, setPaymentTiming] = useState<'now' | 'delivery'>('now');
+  const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
 
   const handlePayment = async () => {
+    if (!selectedMethodId) return;
     setPaymentStep('processing');
     
     try {
-      // Notify backend about the new booking
-      await fetch('/api/notify-booking', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bike,
-          selectedYear,
-          selectedColor,
-          bookingDetails: {
-            days,
-            from: range.from ? format(range.from, 'd MMM y', { locale: dateLocale }) : '',
-            to: range.to ? format(range.to, 'd MMM y', { locale: dateLocale }) : '',
-            totalPrice,
-            location,
-            deliveryTime
-          },
-          customerDetails: {
-            name,
-            phone,
-            email
-          }
-        })
-      });
+      // Generate a temporary ID if we don't have one from Firestore yet
+      const tempBookingId = `PAY-${Date.now()}`;
+      let initialPaymentStatus = 'unpaid';
+
+      // If Credit Card selected, handle Midtrans first
+      if (selectedMethodId === 'card') {
+        // Midtrans logic (currently placeholder or handled elsewhere)
+      }
+
+      await createAndNotify(tempBookingId, initialPaymentStatus as any);
+
+      // Move success to the end of the try block
+      setTimeout(() => {
+        setPaymentStep('success');
+      }, 2000);
     } catch (error) {
-      console.error("Notification failed:", error);
+      console.error("[Booking Details]: Booking process failed with error:", error);
+      setPaymentStep('method'); // Go back to payment method if failed
+      alert('Booking failed. Please check your internet connection or try again later.');
+    }
+  };
+
+  const createAndNotify = async (paymentId: string, paymentStatus: 'unpaid' | 'paid' | 'refunded') => {
+    // Create booking in Firestore
+    const bookingData = {
+      bikeId: bike.id,
+      bikeName: bike.name,
+      selectedYear: 2025,
+      selectedColor,
+      startDate: range.from?.toISOString() || '',
+      endDate: range.to?.toISOString() || '',
+      days,
+      totalPrice,
+      location,
+      selectedDistrict: selectedDistrict || 'Unknown',
+      deliveryTime,
+      helmet1Size,
+      helmet2Size,
+      surfRack,
+      customerName: name,
+      customerPhone: phone,
+      customerEmail: email,
+      status: 'new',
+      paymentMethod: selectedMethodId,
+      paymentTiming: paymentTiming,
+      paymentStatus,
+      paymentId,
+      createdAt: serverTimestamp(),
+    };
+
+    try {
+      await addDoc(collection(db, 'bookings'), bookingData);
+    } catch (error) {
+      console.error('[Booking Details]: Firestore save failed:', error);
+      handleFirestoreError(error, OperationType.WRITE, 'bookings');
     }
 
-    setTimeout(() => {
-      setPaymentStep('success');
-    }, 2000);
+    // Notify backend
+    await fetch('/api/notify-booking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bike,
+        selectedYear: 2025,
+        selectedColor,
+        bookingDetails: {
+          days,
+          from: range.from ? format(range.from, 'd MMM y', { locale: dateLocale }) : '',
+          to: range.to ? format(range.to, 'd MMM y', { locale: dateLocale }) : '',
+          selectedDistrict: selectedDistrict || 'Unknown',
+          totalPrice,
+          totalPriceDisplay: selectedMethodId === 'crypto' 
+            ? getUSDT(totalPrice) 
+            : `${formatPrice(totalPrice)} IDR`,
+          location,
+          deliveryTime,
+          helmet1Size,
+          helmet2Size,
+          surfRack,
+          paymentMethod: selectedMethodId,
+          paymentStatus
+        },
+        customerDetails: { name, phone, email }
+      })
+    });
   };
 
   if (showPayment) {
@@ -386,113 +849,135 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
         exit={{ opacity: 0, x: '100%' }}
         className="fixed inset-0 z-[200] bg-background flex flex-col h-screen overflow-y-auto"
       >
-        <div className="p-6 flex items-center justify-between border-b border-border sticky top-0 bg-background z-10">
+        <div className="pt-4 px-6 pb-2">
           <button onClick={() => setShowPayment(false)} className="p-2 -ml-2 hover:bg-black/5 rounded-xl transition-colors">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <div className="text-center">
-            <h2 className="font-display font-bold text-lg">{language === 'ru' ? 'Оплата' : 'Checkout'}</h2>
-          </div>
-          <div className="w-10" />
         </div>
 
-        <div className="flex-grow p-6 flex flex-col max-w-2xl mx-auto w-full">
+        <div className="flex-grow px-6 pb-6 flex flex-col max-w-2xl mx-auto w-full pt-0">
           {paymentStep === 'method' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-              <div className="p-8 bg-surface border border-border rounded-[32px] shadow-sm relative overflow-hidden group">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+              <div className="p-6 bg-surface border border-border rounded-[32px] shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-muted text-[10px] uppercase font-bold tracking-[0.2em]">{bike.name}</span>
-                    <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                      {days} {language === 'ru' ? 'дн.' : 'days'}
-                    </span>
-                  </div>
+                <div className="relative z-10 flex items-center justify-between">
                   <div className="flex flex-col">
-                    <span className="text-3xl font-display font-bold text-foreground tracking-tight">
+                    <span className="text-muted text-[10px] uppercase font-bold tracking-[0.2em] mb-1">{bike.name}</span>
+                    <span className="text-2xl font-display font-bold text-foreground tracking-tight">
                       {formatPrice(totalPrice)} IDR
                     </span>
-                    <span className="text-[10px] text-muted mt-1 font-medium tracking-wide">
-                      {language === 'ru' ? 'Общая сумма к оплате' : 'Total amount to pay'}
+                    <span className="text-[10px] text-muted mt-0.5 font-medium tracking-wide">
+                      Total amount to pay
                     </span>
+                  </div>
+                  <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                    {days} days
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <span className="text-[10px] text-muted uppercase font-bold tracking-widest px-1 ml-2">
-                  {language === 'ru' ? 'Выберите способ' : 'Select Method'}
-                </span>
-                <button 
-                  onClick={handlePayment}
-                  className="w-full h-20 flex items-center justify-between px-6 bg-surface border border-border rounded-3xl hover:border-primary hover:shadow-xl hover:shadow-primary/5 transition-all group"
+              <div className="flex p-1 bg-muted/20 rounded-2xl mb-6">
+                <button
+                  onClick={() => {
+                    setPaymentTiming('now');
+                    setSelectedMethodId(null);
+                  }}
+                  className={cn(
+                    "flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all",
+                    paymentTiming === 'now' ? "bg-white shadow-sm text-primary" : "text-muted hover:text-foreground"
+                  )}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center transform group-hover:scale-110 transition-transform">
-                      <Zap className="w-6 h-6 text-white fill-white" />
-                    </div>
-                    <div className="flex flex-col items-start">
-                      <span className="font-bold text-base">Apple Pay</span>
-                      <span className="text-[10px] text-muted font-medium">Fast & Secure</span>
-                    </div>
-                  </div>
-                  <div className="w-6 h-6 rounded-full border-2 border-border group-hover:border-primary group-hover:bg-primary/5 flex items-center justify-center transition-all">
-                    <div className="w-2 h-2 rounded-full bg-primary scale-0 group-hover:scale-100 transition-transform" />
-                  </div>
+                  Pay Now
                 </button>
-                <button 
-                  onClick={handlePayment}
-                  className="w-full h-20 flex items-center justify-between px-6 bg-surface border border-border rounded-3xl hover:border-primary hover:shadow-xl hover:shadow-primary/5 transition-all group"
+                <button
+                  onClick={() => {
+                    setPaymentTiming('delivery');
+                    setSelectedMethodId(null);
+                  }}
+                  className={cn(
+                    "flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all",
+                    paymentTiming === 'delivery' ? "bg-white shadow-sm text-primary" : "text-muted hover:text-foreground"
+                  )}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white font-bold text-sm transform group-hover:scale-110 transition-transform shadow-lg shadow-primary/20">VISA</div>
-                    <div className="flex flex-col items-start">
-                      <span className="font-bold text-base">Credit Card</span>
-                      <span className="text-[10px] text-muted font-medium">Visa, Mastercard</span>
-                    </div>
-                  </div>
-                  <div className="w-6 h-6 rounded-full border-2 border-border group-hover:border-primary group-hover:bg-primary/5 flex items-center justify-center transition-all">
-                    <div className="w-2 h-2 rounded-full bg-primary scale-0 group-hover:scale-100 transition-transform" />
-                  </div>
+                  Pay on Delivery
                 </button>
-                <button 
-                  onClick={handlePayment}
-                  className="w-full h-20 flex items-center justify-between px-6 bg-surface border border-border rounded-3xl hover:border-primary hover:shadow-xl hover:shadow-primary/5 transition-all group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white font-bold text-[10px] transform group-hover:scale-110 transition-transform shadow-lg shadow-primary/20 leading-none text-center">Indo<br/>Bank</div>
-                    <div className="flex flex-col items-start">
-                      <span className="font-bold text-base">{language === 'ru' ? 'Банки Индонезии' : 'Indonesian Banks'}</span>
-                      <span className="text-[10px] text-muted font-medium">VA, Bank Transfer</span>
-                    </div>
-                  </div>
-                  <div className="w-6 h-6 rounded-full border-2 border-border group-hover:border-primary group-hover:bg-primary/5 flex items-center justify-center transition-all">
-                    <div className="w-2 h-2 rounded-full bg-primary scale-0 group-hover:scale-100 transition-transform" />
-                  </div>
-                </button>
-                <button 
-                  onClick={handlePayment}
-                  className="w-full h-20 flex items-center justify-between px-6 bg-surface border border-border rounded-3xl hover:border-primary hover:shadow-xl hover:shadow-primary/5 transition-all group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-surface border border-border rounded-2xl flex items-center justify-center font-bold text-sm transform group-hover:scale-110 transition-transform overflow-hidden">
-                      <div className="flex flex-col items-center">
-                        <span className="text-primary text-[8px] leading-tight">СБП</span>
-                        <div className="flex gap-0.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                        </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 pb-8">
+                {/* Payment Methods Grid */}
+                {[
+                  { id: 'bank_id', name: 'Bank Transfer ID', desc: 'BCA, BNI, Mandiri...', icon: Landmark, color: 'bg-primary', timing: 'now' },
+                  { id: 'sbp', name: 'СБП', desc: 'Fast Payment', icon: null, color: 'bg-white', timing: 'now' },
+                  { id: 'crypto', name: 'USDT (Crypto)', desc: 'TRC20, ERC20', icon: Coins, color: 'bg-[#26A17B]', timing: 'now' },
+                  
+                  { id: 'cash', name: 'Cash', desc: 'On delivery', icon: Banknote, color: 'bg-green-600', timing: 'delivery' },
+                  { id: 'bank_id', name: 'Bank Transfer ID', desc: 'BCA, BNI, Mandiri...', icon: Landmark, color: 'bg-primary', timing: 'delivery' },
+                  { id: 'sbp', name: 'СБП', desc: 'Fast Payment', icon: null, color: 'bg-white', timing: 'delivery' },
+                  { id: 'crypto', name: 'USDT (Crypto)', desc: 'TRC20, ERC20', icon: Coins, color: 'bg-[#26A17B]', timing: 'delivery' },
+                ].filter(m => m.timing === paymentTiming).map((method) => (
+                  <button 
+                    key={method.id}
+                    onClick={() => setSelectedMethodId(method.id)}
+                    className={`w-full h-16 flex items-center justify-between px-4 bg-surface border rounded-2xl transition-all group ${
+                      selectedMethodId === method.id 
+                        ? 'border-primary ring-2 ring-primary/10 shadow-lg shadow-primary/5' 
+                        : 'border-border hover:border-primary/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-10 h-10 ${method.color} rounded-xl flex items-center justify-center transform group-hover:scale-105 transition-transform overflow-hidden shrink-0 border border-black/5`}>
+                        {method.icon ? (
+                          <method.icon className={cn("w-5 h-5", (method as any).iconColor || "text-white")} />
+                        ) : method.id === 'sbp' ? (
+                          <div className="flex flex-col items-center">
+                            <span className="text-primary text-[8px] leading-tight font-black tracking-tighter">СБП</span>
+                            <div className="flex gap-0.5 mt-0.5">
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#FFB100]" />
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#133F85]" />
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#4DAF50]" />
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-col items-start min-w-0 text-left">
+                        <span className="font-bold text-xs truncate w-full text-left">{method.name}</span>
+                        <span className="text-[9px] text-muted font-medium truncate w-full text-left">{method.desc}</span>
                       </div>
                     </div>
-                    <div className="flex flex-col items-start">
-                      <span className="font-bold text-base">{language === 'ru' ? 'СБП' : 'SBP'}</span>
-                      <span className="text-[10px] text-muted font-medium">Fast Payment System</span>
+                    
+                    <div className="flex items-center shrink-0 gap-3">
+                      <span className="font-display font-black text-xs text-foreground/80">
+                        {method.id === 'cash' || method.id === 'bank_id' 
+                          ? `Rp ${totalPrice.toLocaleString()}`
+                          : method.id === 'sbp' 
+                            ? getRUB(totalPrice)
+                            : method.id === 'crypto'
+                              ? getUSDT(totalPrice)
+                              : ''}
+                      </span>
+                      <div className={`w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center shrink-0 ${
+                        selectedMethodId === method.id 
+                          ? 'border-primary bg-primary' 
+                          : 'border-border group-hover:border-primary/40'
+                      }`}>
+                        {selectedMethodId === method.id && <Check className="w-3 h-3 text-white stroke-[4]" />}
+                      </div>
                     </div>
-                  </div>
-                  <div className="w-6 h-6 rounded-full border-2 border-border group-hover:border-primary group-hover:bg-primary/5 flex items-center justify-center transition-all">
-                    <div className="w-2 h-2 rounded-full bg-primary scale-0 group-hover:scale-100 transition-transform" />
-                  </div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-auto pt-6">
+                <button 
+                  onClick={handlePayment}
+                  disabled={!selectedMethodId}
+                  className={`w-full h-16 rounded-[24px] font-display font-bold text-lg transition-all ${
+                    selectedMethodId 
+                      ? 'bg-foreground text-white shadow-xl shadow-black/10 hover:bg-black' 
+                      : 'bg-muted/10 text-muted cursor-not-allowed'
+                  }`}
+                >
+                  {paymentTiming === 'now' ? 'Pay' : 'Book'}
                 </button>
               </div>
             </motion.div>
@@ -514,10 +999,10 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
               </div>
               <div className="space-y-2">
                 <h3 className="text-2xl font-display font-bold text-foreground">
-                  {language === 'ru' ? 'Обработка платежа...' : 'Processing Payment...'}
+                  Processing Booking...
                 </h3>
                 <p className="text-sm text-muted font-medium">
-                  {language === 'ru' ? 'Пожалуйста, не закрывайте окно' : 'Please do not close this window'}
+                  Please do not close this window
                 </p>
               </div>
             </div>
@@ -542,19 +1027,15 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
               </div>
               <div className="space-y-4">
                 <h2 className="text-4xl font-display font-bold text-foreground">
-                  {language === 'ru' ? 'Успешно!' : 'Thank You!'}
+                  Thank You!
                 </h2>
                 <div className="space-y-2">
                   <p className="text-muted font-medium">
-                    {language === 'ru' 
-                      ? 'Ваше бронирование подтверждено.' 
-                      : 'Your reservation is confirmed.'}
+                    Your reservation is confirmed.
                   </p>
                   <div className="p-4 bg-surface rounded-2xl border border-border inline-block">
                     <p className="text-xs font-bold text-foreground">
-                      {language === 'ru' 
-                        ? 'Мы свяжемся с вами в WhatsApp в ближайшее время.' 
-                        : 'We will reach out via WhatsApp shortly.'}
+                      We will reach out via WhatsApp shortly.
                     </p>
                   </div>
                 </div>
@@ -564,7 +1045,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
                 onClick={onClose}
                 className="w-full h-20 bg-foreground text-white rounded-3xl font-display font-bold text-lg hover:bg-black transition-all shadow-2xl shadow-black/20"
               >
-                {language === 'ru' ? 'Готово' : 'Done'}
+                Done
               </button>
             </div>
           )}
@@ -581,71 +1062,133 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
       className="fixed inset-0 z-[100] bg-background flex flex-col h-screen overflow-y-auto"
     >
-      {/* Header Image */}
-      <div className="relative w-full h-[35vh] shrink-0">
-        <AnimatePresence mode="wait">
-          <motion.img 
-            key={displayImage}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            src={displayImage} 
-            alt={bike.name}
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
-        </AnimatePresence>
-        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent opacity-60" />
-        
+      {/* Header Image Carousel */}
+      <div className="relative w-full h-[32vh] shrink-0 bg-muted group/header">
+        <div 
+          ref={carouselRef}
+          className="flex h-full overflow-x-auto snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
+          onScroll={(e) => {
+            const target = e.currentTarget;
+            const index = Math.round(target.scrollLeft / target.clientWidth);
+            if (index !== currentImageIndex) setCurrentImageIndex(index);
+          }}
+        >
+          {images.map((img, idx) => (
+            <div key={idx} className="min-w-full h-full snap-center shrink-0">
+              <img 
+                src={img} 
+                alt={`${bike.name} ${idx + 1}`}
+                className="w-full h-full object-cover select-none"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop Navigation Zones */}
+        <div className="hidden md:block absolute inset-y-0 left-0 w-24 z-20 group/nav-left">
+          <button 
+            onClick={(e) => {
+              const container = e.currentTarget.parentElement?.parentElement?.querySelector('div');
+              if (container) {
+                container.scrollTo({ left: (currentImageIndex - 1) * container.clientWidth, behavior: 'smooth' });
+              }
+            }}
+            className="w-full h-full bg-black/0 hover:bg-black/20 transition-all duration-300 flex items-center justify-center"
+            aria-label="Previous photo"
+          >
+            <ChevronLeft className="w-8 h-8 text-white opacity-0 group-hover/nav-left:opacity-100 transition-opacity" />
+          </button>
+        </div>
+        <div className="hidden md:block absolute inset-y-0 right-0 w-24 z-20 group/nav-right">
+          <button 
+            onClick={(e) => {
+              const container = e.currentTarget.parentElement?.parentElement?.querySelector('div');
+              if (container) {
+                container.scrollTo({ left: (currentImageIndex + 1) * container.clientWidth, behavior: 'smooth' });
+              }
+            }}
+            className="w-full h-full bg-black/0 hover:bg-black/20 transition-all duration-300 flex items-center justify-center"
+            aria-label="Next photo"
+          >
+            <ChevronLeft className="w-8 h-8 text-white rotate-180 opacity-0 group-hover/nav-right:opacity-100 transition-opacity" />
+          </button>
+        </div>
+
         <button 
           onClick={onClose}
-          className="absolute top-6 left-6 p-3 bg-white/20 backdrop-blur-xl rounded-2xl border border-white/20 text-white hover:bg-white/40 transition-all active:scale-90"
+          className="absolute top-6 left-6 p-3 bg-white/20 backdrop-blur-xl rounded-2xl border border-white/20 text-white hover:bg-white/40 transition-all active:scale-90 z-20"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
 
-        <div className="absolute bottom-6 left-6 right-6">
-          <h1 className="text-3xl font-display font-bold text-white leading-tight">
-            {bike.name}
-          </h1>
-        </div>
+        {/* Swipe Hint */}
+        {images.length > 1 && currentImageIndex === 0 && (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 1, repeat: 3, repeatType: 'reverse' }}
+            className="absolute right-6 top-1/2 -translate-y-1/2 p-2 bg-white/10 backdrop-blur-md rounded-full text-white/40 pointer-events-none"
+          >
+            <ChevronLeft className="w-6 h-6 rotate-180" />
+          </motion.div>
+        )}
       </div>
 
       {/* Content */}
-      <div className="flex-grow px-6 py-8 max-w-2xl mx-auto w-full space-y-6">
-        {/* Price & Discount Section */}
-        <div className="space-y-1">
-          <div className="flex flex-col">
-            <span className="text-xl font-display font-bold text-foreground">
-              {formatPrice(finalPricePerDay)} IDR <span className="text-xs font-medium text-muted ml-0.5 opacity-70">{getUSD(finalPricePerDay)}</span>
-            </span>
+      <div className="flex-grow px-4 py-2 max-w-2xl mx-auto w-full space-y-3">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-display font-bold text-foreground leading-tight">
+              {bike.name}
+            </h1>
+            <button 
+              onClick={() => setIsBikeInfoOpen(true)}
+              className="p-1.5 hover:bg-primary/10 rounded-full text-muted hover:text-primary transition-all"
+            >
+              <Info className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="h-px w-full bg-border opacity-50" />
+
+          {/* Price Section */}
+           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted line-through opacity-50 select-none">
-                {formatPrice(Math.round(currentPrice * 1.2))} IDR
+              <span className="text-2xl font-display font-bold text-foreground">
+                {formatPrice(finalPricePerDay)} IDR
               </span>
-              <span className="text-sm font-bold text-red-500">
-                -{discountPercent}%
-              </span>
+              <span className="text-xs font-medium text-muted opacity-70">{getUSD(finalPricePerDay, true)}</span>
+            </div>
+            
+            <div className="flex items-center gap-2 h-5">
+              {finalPricePerDay < bike.pricePerDay && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-muted line-through decoration-muted/50">
+                    {formatPrice(bike.pricePerDay)} IDR
+                  </span>
+                  <span className="text-sm font-black text-red-500 leading-none">
+                    -{Math.round((1 - finalPricePerDay / bike.pricePerDay) * 100)}%
+                  </span>
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/5 border border-red-500/10 rounded-md">
+                    <span className="text-[9px] font-black text-red-500 uppercase tracking-widest leading-none">
+                      {days < 7 && bike.isPromoActive && bike.promoPrice && bike.promoPrice > 0 ? 'promo' : days >= 30 ? 'monthly discount' : 'weekly discount'}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-          <button 
-            onClick={() => setIsDiscountInfoOpen(true)}
-            className="text-[10px] text-muted hover:text-primary transition-colors flex items-center gap-1.5 font-bold uppercase tracking-wider h-8 -ml-1 px-1 rounded-lg hover:bg-primary/5 border border-transparent hover:border-primary/10"
-          >
-            <Info className="w-3 h-3" />
-            {language === 'ru' ? 'Скидка от 7 дней' : 'Discount from 7 days'}
-          </button>
         </div>
 
         {/* Color Selector */}
         {bike.colors && (
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             {bike.colors.map(color => (
               <button
                 key={color.name}
                 onClick={() => setSelectedColor(color.name)}
-                className={`w-10 h-10 rounded-full border-2 transition-all p-0.5 ${
+                className={`w-8 h-8 rounded-full border-2 transition-all p-0.5 ${
                   selectedColor === color.name ? 'border-primary ring-4 ring-primary/10' : 'border-border hover:border-primary/40'
                 }`}
               >
@@ -657,25 +1200,6 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
             ))}
           </div>
         )}
-
-        {/* Year Selector */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-5 gap-2">
-            {YEARS.map(year => (
-              <button
-                key={year}
-                onClick={() => setSelectedYear(year)}
-                className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                  selectedYear === year 
-                    ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105' 
-                    : 'bg-surface border-border text-foreground hover:border-primary/30'
-                }`}
-              >
-                {year}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Info Grid - Interactive Date Selection */}
         <div className="relative">
@@ -706,10 +1230,16 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
                 </span>
               </div>
 
-              {/* Duration / Discount Badge */}
-              <div className="bg-foreground flex flex-col items-center justify-center px-5 transition-colors group-hover:bg-primary">
-                <span className="text-xl font-display font-bold text-white leading-none">{days}</span>
-                <span className="text-[8px] font-bold text-red-500 bg-white px-1.5 py-0.5 rounded-full mt-1">-{discountPercent}%</span>
+              {/* Duration / Rate Badge */}
+              <div className="bg-foreground flex flex-col items-center justify-center px-4 transition-colors group-hover:bg-primary min-w-[80px] py-1">
+                <span className="text-lg font-display font-bold text-white leading-none">{days}</span>
+                {finalPricePerDay < bike.pricePerDay && (
+                  <div className="mt-1 px-2 py-0.5 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+                    <span className="text-[8px] font-black text-white uppercase leading-none">
+                      -{Math.round((1 - finalPricePerDay / bike.pricePerDay) * 100)}%
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -725,7 +1255,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
               >
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-[10px] font-bold uppercase tracking-widest text-foreground">
-                    {language === 'ru' ? 'Календарь' : 'Calendar'}
+                    Calendar
                   </h3>
                   <button onClick={() => setIsCalendarOpen(false)} className="p-1 hover:bg-black/5 rounded-lg transition-colors">
                     <X className="w-4 h-4 text-muted" />
@@ -739,7 +1269,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
                     onSelect={handleSelect}
                     numberOfMonths={1}
                     locale={dateLocale}
-                    disabled={{ before: startOfToday() }}
+                    disabled={{ before: addDays(startOfToday(), 1) }}
                     className="!m-0"
                     classNames={{
                       day_selected: "bg-primary text-white rounded-full",
@@ -755,209 +1285,398 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
                   onClick={() => setIsCalendarOpen(false)}
                   className="w-full mt-6 bg-primary text-white py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
                 >
-                  {language === 'ru' ? 'Применить' : 'Apply'}
+                  Apply
                 </button>
               </motion.div>
             )}
           </AnimatePresence>
+          
+          <div className="mt-2 px-1">
+            <AnimatePresence mode="wait">
+              {availabilityStatus === 'searching' && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  className="flex items-center gap-1.5"
+                >
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                  <span className="text-[10px] font-bold text-primary uppercase tracking-wider">
+                    Searching...
+                  </span>
+                </motion.div>
+              )}
+              {availabilityStatus === 'available' && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  className="flex items-center gap-1.5"
+                >
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  <span className="text-[10px] font-bold text-green-500 uppercase tracking-wider">
+                    Available
+                  </span>
+                </motion.div>
+              )}
+              {availabilityStatus === 'unavailable' && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  className="mt-2 p-4 bg-red-50 border border-red-100 rounded-2xl w-full space-y-3"
+                >
+                  <p className="text-[10px] sm:text-xs leading-relaxed text-red-600 font-medium text-center">
+                    Not available for these dates, please pick other dates or contact operator
+                  </p>
+                  <a 
+                    href={adminContacts ? `https://wa.me/${adminContacts.whatsapp.replace(/\D/g, '')}?text=Hello!%20I'd%20like%20to%20book%20a%20bike` : "#"}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-red-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    Contact Operator
+                  </a>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
-        {/* Location & Time Section */}
-        <div className="space-y-6">
-          <div className="space-y-4">
-            <span className="text-[10px] text-muted uppercase font-bold tracking-widest px-1">
-              {language === 'ru' ? 'Локация доставки' : 'Delivery Location'}
+        {/* Helmet & Surf Rack Selection */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-2">
+            <span className="text-[9px] text-muted uppercase font-black tracking-widest px-1 opacity-70">
+              Helmet 1
             </span>
-            <div className="space-y-4">
-              <LocationPicker 
-                position={mapPosition} 
-                setPosition={setMapPosition} 
-                location={location}
-                setLocation={setLocation}
-                language={language} 
-              />
+            <div className="flex bg-surface border border-border rounded-xl p-0.5 gap-0.5">
+              {HELMET_1_SIZES.map(size => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => setHelmet1Size(size)}
+                  className={`flex-1 py-1.5 text-[9px] font-black rounded-lg transition-all ${
+                    helmet1Size === size 
+                      ? 'bg-primary text-white shadow-md shadow-primary/10' 
+                      : 'text-muted hover:text-foreground hover:bg-primary/5'
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
             </div>
           </div>
-
           <div className="space-y-2">
-            <span className="text-[10px] text-muted uppercase font-bold tracking-widest px-1">
-              {language === 'ru' ? 'Время доставки' : 'Delivery Time'}
+            <span className="text-[9px] text-muted uppercase font-black tracking-widest px-1 opacity-70">
+              Helmet 2
             </span>
-            <div className="relative">
-              <Clock className="absolute left-4 top-[22px] w-4 h-4 text-primary opacity-60 z-10 pointer-events-none" />
-              <CustomTimePicker 
-                value={deliveryTime} 
-                onChange={setDeliveryTime} 
-                language={language}
-              />
+            <div className="flex bg-surface border border-border rounded-xl p-0.5 gap-0.5">
+              {HELMET_2_SIZES.map(size => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => setHelmet2Size(size)}
+                  className={`flex-1 py-1.5 text-[9px] font-black rounded-lg transition-all ${
+                    helmet2Size === size 
+                      ? 'bg-primary text-white shadow-md shadow-primary/10' 
+                      : 'text-muted hover:text-foreground hover:bg-primary/5'
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <span className="text-[9px] text-muted uppercase font-black tracking-widest px-1 opacity-70">
+              Surf Rack
+            </span>
+            <div className="flex bg-surface border border-border rounded-xl p-0.5 gap-0.5">
+              {[
+                { label: 'No', value: false },
+                { label: 'Yes', value: true }
+              ].map(opt => (
+                <button
+                  key={opt.label}
+                  type="button"
+                  onClick={() => setSurfRack(opt.value)}
+                  className={`flex-1 py-1.5 text-[9px] font-black rounded-lg transition-all ${
+                    surfRack === opt.value 
+                      ? 'bg-primary text-white shadow-md shadow-primary/10' 
+                      : 'text-muted hover:text-foreground hover:bg-primary/5'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+
+
+        {/* Location & Time Section */}
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <span className="text-[9px] text-muted uppercase font-bold tracking-widest px-1">
+              Delivery Map
+            </span>
+            <MapPicker 
+              position={mapPosition} 
+              setPosition={setMapPosition} 
+              setLocation={setLocation}
+              language={language} 
+              isFullscreen={isMapFullscreen}
+              setIsFullscreen={setIsMapFullscreen}
+              selectedDistrict={selectedDistrict}
+              setSelectedDistrict={setSelectedDistrict}
+            />
+            {selectedDistrict === null && (
+              <motion.div 
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-2 p-4 bg-red-50 border border-red-100 rounded-2xl w-full space-y-3"
+              >
+                <p className="text-[10px] sm:text-xs leading-relaxed text-red-600 font-medium text-center">
+                  {t.booking.outOfZone}
+                </p>
+                <a 
+                  href={adminContacts ? `https://wa.me/${adminContacts.whatsapp.replace(/\D/g, '')}?text=Hello!%20I'd%20like%20to%20book%20a%20bike` : "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 bg-red-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  Contact Support
+                </a>
+              </motion.div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="md:col-span-3 relative group">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary opacity-60 z-10" />
+                <input 
+                  type="text" 
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  placeholder="Delivery Address"
+                  className="w-full bg-surface border border-border rounded-2xl py-4 pl-11 pr-14 text-sm font-medium focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all outline-none"
+                />
+                <button 
+                  onClick={handleSearch}
+                  disabled={isSearching}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-primary hover:bg-primary/10 rounded-xl transition-all disabled:opacity-50"
+                >
+                  {isSearching ? (
+                    <div className="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                  ) : (
+                    <Search className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+
+            <div className="space-y-2">
+              <div className="relative">
+                <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary opacity-60 z-10 pointer-events-none" />
+                <CustomTimePicker 
+                  value={deliveryTime} 
+                  onChange={setDeliveryTime} 
+                  language={language}
+                />
+              </div>
             </div>
           </div>
         </div>
 
         {/* Contact Form */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="px-1">
-            <span className="text-[10px] text-muted uppercase font-bold tracking-widest">
-              {language === 'ru' ? 'Контактные данные' : 'Contact Details'}
+            <span className="text-[9px] text-muted uppercase font-bold tracking-widest">
+              Contact Details
             </span>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2.5">
+            {/* Name Input */}
             <div className="relative">
-            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted opacity-60" />
-            <input 
-              type="text" 
-              value={name}
-              onChange={(e) => {
-                const val = e.target.value.replace(/[^a-zA-Z\s]/g, '');
-                const formatted = val.split(' ').map(word => 
-                  word.charAt(0).toUpperCase() + word.slice(1)
-                ).join(' ');
-                setName(formatted);
-              }}
-              placeholder={language === 'ru' ? 'Ваше имя' : 'Your name'}
-              className="w-full bg-surface border border-border rounded-2xl py-4 pl-11 pr-4 text-sm font-medium focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all outline-none"
-            />
-          </div>
-          <div className="relative phone-input-container">
-            <PhoneInput 
-              country={country}
-              value={phone}
-              onChange={(val, data: any) => {
-                setPhone(val);
-                setCountry(data.countryCode);
-                setDialCode(data.dialCode);
-                setIsVerified(false);
-                setIsVerifying(false);
-                setVerificationError(false);
-              }}
-              enableSearch
-              disableSearchIcon
-              placeholder="WhatsApp number"
-              searchPlaceholder="Search country..."
-              searchNotFound="No results"
-              masks={{
-                in: '.....-.....',
-                cn: '... .... ....',
-                us: '(...) ...-....',
-                ca: '(...) ...-....',
-                id: '...-....-....',
-                pk: '...-.......',
-                br: '.. 9....-....',
-                ng: '... ... ....',
-                bd: '....-......',
-                ru: '(...) ...-..-..',
-                kz: '(...) ...-..-..',
-                mx: '... ... ....',
-                jp: '..-....-....',
-                et: '.. ... ....',
-                ph: '.... ... ....',
-                eg: '... ... ....',
-                vn: '... ... ...',
-                cd: '... ... ...',
-                tr: '... ... .. ..',
-                ir: '... ... ....',
-                de: '.... .......',
-                th: '.. ... ....',
-                gb: '..... ......',
-                fr: '. .. .. .. ..',
-                it: '... .......',
-                za: '.. ... ....',
-                kr: '..-....-....',
-                co: '... ... ....',
-                es: '... .. .. ..',
-                ar: '.. ....-....',
-                dz: '... .. .. ..',
-                ua: '(..) ... .. ..',
-                iq: '... ... ....',
-                pl: '... ... ...',
-                ma: '.-.. .. .. ..',
-                sa: '. ... ....',
-                uz: '.. ...-..-..',
-                pe: '... ... ...',
-                my: '..-... ....',
-                au: '. .... ....',
-                nl: '. .. .. .. ..',
-                ro: '... ... ...',
-                cl: '. .... ....',
-                gt: '.... ....',
-                ec: '. ... ....',
-                cz: '... ... ...',
-                gr: '... ... ....',
-                pt: '... ... ...',
-                az: '.. ... .. ..',
-                se: '.. ... .. ..',
-                ae: '. ... ....',
-                hu: '.. ... ....',
-                by: '(..) ...-..-..',
-                il: '..-...-....',
-                ch: '.. ... .. ..',
-                at: '.... .......',
-                sg: '.... ....',
-                dk: '.. .. .. ..',
-                fi: '... ... ....',
-                sk: '... ... ...',
-                no: '... .. ...',
-                ie: '.. ... ....',
-                nz: '.. ... ....',
-                qa: '.... ....',
-                ee: '.... ....',
-              }}
-              inputStyle={{
-                width: '100%',
-                height: '54px',
-                borderRadius: '16px',
-                fontSize: '14px',
-                fontWeight: '500',
-                backgroundColor: 'var(--color-surface)',
-                border: phone && isValid ? '1px solid #22c55e' : '1px solid var(--color-border)',
-                paddingLeft: '56px',
-                transition: 'all 0.2s',
-              }}
-              buttonStyle={{
-                border: 'none',
-                backgroundColor: 'transparent',
-                paddingLeft: '12px',
-                width: '48px',
-                borderRadius: '16px 0 0 16px',
-              }}
-              containerClass="!w-full"
-              inputClass="!w-full !font-medium !text-foreground !outline-none focus:!border-primary focus:!ring-4 focus:!ring-primary/5"
-              dropdownClass="!bg-surface !border-border !rounded-2xl !mt-2 !shadow-2xl !overflow-hidden !text-sm"
-              searchClass="!bg-surface !border-border !px-4 !py-2 !mx-0 !w-full !sticky !top-0 !z-10"
-            />
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 z-10">
-              {isVerified ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-green-500 uppercase tracking-tighter animate-in fade-in slide-in-from-right-1">Verified</span>
-                  <Check className="w-4 h-4 text-green-500 animate-in zoom-in" />
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary opacity-60" />
+              <input 
+                type="text" 
+                value={name}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                  const formatted = val.split(' ').map(word => 
+                    word.charAt(0).toUpperCase() + word.slice(1)
+                  ).join(' ');
+                  setName(formatted);
+                }}
+                placeholder="Your Name"
+                className="w-full bg-surface border border-border rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:border-primary transition-all outline-none"
+              />
+            </div>
+
+            {/* Phone Input */}
+            <div className="relative phone-input-container">
+              <PhoneInput 
+                country={''}
+                value={phone}
+                onChange={(val) => {
+                  const normalized = normalizePhoneNumber(val || '');
+                  setPhone(normalized);
+                  setIsVerified(false);
+                  setIsVerifying(false);
+                  setVerificationError(false);
+                }}
+                disableDropdown={true}
+                placeholder="WhatsApp Number"
+                  containerClass="!w-full"
+                  inputClass={cn(
+                    "!w-full !h-12 !pl-11 !rounded-xl !bg-surface !border !text-sm !font-display !font-medium !text-foreground !outline-none",
+                    phone && !isValid ? "!border-red-500/50" : "!border-border"
+                  )}
+                  buttonClass="!hidden" 
+                />
+                {/* Custom WhatsApp Icon aligned with User icon */}
+                <MessageCircle className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 ${isVerified ? 'text-green-500' : 'text-primary opacity-60'} z-10 pointer-events-none`} />
+                
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 z-10">
+                  {isVerified ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-green-500 uppercase tracking-tighter animate-in fade-in slide-in-from-right-1">Verified</span>
+                      <Check className="w-4 h-4 text-green-500 animate-in zoom-in" />
+                    </div>
+                  ) : isVerifying ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : verificationError ? (
+                    <div className="w-4 h-4 text-red-500 bg-red-500/10 rounded-full flex items-center justify-center font-bold text-[10px]">!</div>
+                  ) : phone && phone.length > 3 ? (
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse pointer-events-none" />
+                  ) : null}
                 </div>
-              ) : isVerifying ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : verificationError ? (
-                <div className="w-4 h-4 text-red-500 bg-red-500/10 rounded-full flex items-center justify-center font-bold text-[10px]">!</div>
-              ) : phone && phone.length > 3 ? (
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse pointer-events-none" />
-              ) : (
-                <Phone className="w-4 h-4 text-muted opacity-60 pointer-events-none" />
+              </div>
+              {verificationError && (
+                <motion.p 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-[10px] font-bold text-red-500 px-4 mt-1"
+                >
+                  Number is not registered in WhatsApp
+                </motion.p>
               )}
             </div>
+
+            {/* Acceptance Checkbox */}
+            <div className="flex justify-center px-1 pt-3">
+              <label className="flex items-center gap-2 cursor-pointer group max-w-fit">
+                <div className="relative flex items-center shrink-0">
+                  <input 
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <div className="w-4 h-4 border border-muted/30 rounded-sm bg-white/5 peer-checked:bg-muted/20 peer-checked:border-muted/40 transition-all flex items-center justify-center group-hover:border-muted/60">
+                    <Check className="w-2.5 h-2.5 text-muted opacity-0 peer-checked:opacity-100 transition-opacity" />
+                  </div>
+                </div>
+                <span className="text-[9px] md:text-[11px] text-muted/50 leading-none font-light tracking-wide">
+                  I agree to the{' '}
+                  <button 
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onTermsClick?.();
+                    }}
+                    className="text-muted/70 hover:text-primary transition-colors underline underline-offset-2 decoration-muted/30"
+                  >
+                    Terms of Service
+                  </button>
+                  {' '}and{' '}
+                  <button 
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onPrivacyClick?.();
+                    }}
+                    className="text-muted/70 hover:text-primary transition-colors underline underline-offset-2 decoration-muted/30"
+                  >
+                    Privacy Policy
+                  </button>
+                </span>
+              </label>
+            </div>
           </div>
-          {verificationError && (
-            <motion.p 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-[10px] font-bold text-red-500 px-1 mt-1"
+
+        {/* Promo Code Block */}
+        <div className="pt-2">
+          {!showPromoInput && !appliedPromo ? (
+            <button 
+              onClick={() => setShowPromoInput(true)}
+              className="text-[10px] font-bold text-primary hover:underline px-1"
             >
-              {language === 'ru' ? 'Номер не зарегистрирован в WhatsApp' : 'Number is not registered in WhatsApp'}
-            </motion.p>
+              Promo code?
+            </button>
+          ) : (
+            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+              {appliedPromo ? (
+                <div className="flex items-center justify-between bg-green-500/5 border border-green-500/10 rounded-2xl p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center text-green-600">
+                      <Tag className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-green-600 uppercase tracking-tight">Promo applied: -{appliedPromo.discount}%</p>
+                      <p className="text-[10px] text-green-600/70 font-bold uppercase tracking-widest">{appliedPromo.code}</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setAppliedPromo(null);
+                      setPromoInput('');
+                    }}
+                    className="p-2 hover:bg-green-500/10 rounded-lg transition-colors text-green-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input 
+                      placeholder="ENTER CODE"
+                      value={promoInput}
+                      onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                      className="flex-1 bg-surface border border-border px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted/40"
+                    />
+                    <button 
+                      onClick={handleApplyPromo}
+                      disabled={verifyingPromo || !promoInput.trim()}
+                      className="bg-primary text-white px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:grayscale disabled:hover:scale-100"
+                    >
+                      {verifyingPromo ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : 'Apply'}
+                    </button>
+                  </div>
+                  {promoError && (
+                    <motion.p 
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-[9px] font-bold text-red-500 px-4"
+                    >
+                      {promoError}
+                    </motion.p>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
-    </div>
 
-      {/* Discount Info Modal */}
+      {/* Rates Info Modal */}
       <AnimatePresence>
         {isDiscountInfoOpen && (
           <div className="fixed inset-0 z-[1200] flex items-center justify-center p-6">
@@ -976,7 +1695,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-display font-bold text-foreground">
-                  {language === 'ru' ? 'Система скидок' : 'Discount System'}
+                  Rental Rates
                 </h3>
                 <button onClick={() => setIsDiscountInfoOpen(false)} className="p-2 hover:bg-black/5 rounded-xl transition-colors">
                   <X className="w-5 h-5 text-muted" />
@@ -986,26 +1705,37 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
               <div className="space-y-4">
                 <div className="p-4 bg-muted/5 rounded-2xl border border-border/50 flex items-center justify-between">
                   <div className="flex flex-col">
-                    <span className="text-xs font-bold text-muted uppercase tracking-widest">{language === 'ru' ? 'До 7 дней' : 'Up to 7 days'}</span>
-                    <span className="text-sm font-medium text-foreground">{language === 'ru' ? 'Базовая скидка' : 'Base discount'}</span>
+                    <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Daily Rate</span>
+                    <span className="text-sm font-medium text-foreground">1-6 days</span>
                   </div>
-                  <span className="text-2xl font-display font-bold text-red-500">8%</span>
+                  <div className="text-right">
+                    <div className="text-lg font-display font-bold text-foreground">{formatPrice(bike.pricePerDay)}</div>
+                    <div className="text-[10px] text-muted font-medium">per day</div>
+                  </div>
                 </div>
                 
-                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/20 flex items-center justify-between scale-105 shadow-xl shadow-primary/5">
+                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/20 flex items-center justify-between">
                   <div className="flex flex-col">
-                    <span className="text-xs font-bold text-primary uppercase tracking-widest">{language === 'ru' ? '7 - 30 дней' : '7 - 30 days'}</span>
-                    <span className="text-sm font-medium text-foreground">{language === 'ru' ? 'Популярный выбор' : 'Popular choice'}</span>
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Weekly Rate</span>
+                    <span className="text-sm font-medium text-foreground">7-29 days</span>
                   </div>
-                  <span className="text-2xl font-display font-bold text-primary">15%</span>
+                  <div className="text-right">
+                    <div className="text-lg font-display font-bold text-primary">{bike.priceWeekly ? formatPrice(bike.priceWeekly) : formatPrice(bike.pricePerDay)}</div>
+                    <div className="text-[10px] text-primary/60 font-medium">per day</div>
+                    <div className="text-[10px] font-bold text-primary mt-1">Total/week: {formatPrice((bike.priceWeekly || bike.pricePerDay) * 7)}</div>
+                  </div>
                 </div>
 
                 <div className="p-4 bg-foreground/5 rounded-2xl border border-foreground/10 flex items-center justify-between">
                   <div className="flex flex-col">
-                    <span className="text-xs font-bold text-muted uppercase tracking-widest">{language === 'ru' ? 'От 30 дней' : '30+ days'}</span>
-                    <span className="text-sm font-medium text-foreground">{language === 'ru' ? 'Максимальная выгода' : 'Maximum value'}</span>
+                    <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Monthly Rate</span>
+                    <span className="text-sm font-medium text-foreground">30+ days</span>
                   </div>
-                  <span className="text-2xl font-display font-bold text-foreground">25%</span>
+                  <div className="text-right">
+                    <div className="text-lg font-display font-bold text-foreground">{bike.priceMonthly ? formatPrice(bike.priceMonthly) : formatPrice(bike.pricePerDay)}</div>
+                    <div className="text-[10px] text-muted font-medium">per day</div>
+                    <div className="text-[10px] font-bold text-foreground mt-1">Total/month: {formatPrice((bike.priceMonthly || bike.pricePerDay) * 30)}</div>
+                  </div>
                 </div>
               </div>
 
@@ -1013,32 +1743,57 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
                 onClick={() => setIsDiscountInfoOpen(false)}
                 className="w-full mt-8 h-16 bg-primary text-white rounded-2xl font-display font-bold text-lg hover:shadow-xl hover:shadow-primary/20 transition-all active:scale-95"
               >
-                {language === 'ru' ? 'Понятно' : 'Got it'}
+                Got it
               </button>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
+      {/* Bike Info Modal */}
+      <BikeInfoModal 
+        bike={bike}
+        isOpen={isBikeInfoOpen}
+        onClose={() => setIsBikeInfoOpen(false)}
+      />
+
     {/* Sticky Bottom Bar */}
-      <div className="sticky bottom-0 bg-surface/95 backdrop-blur-xl border-t border-border p-6 mt-auto z-[1000] shadow-[0_-20px_50px_rgba(0,0,0,0.15)]">
+      <div className="sticky bottom-0 bg-surface/95 backdrop-blur-xl border-t border-border p-4 mt-auto z-[1000] shadow-[0_-20px_50px_rgba(0,0,0,0.15)]">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-6">
           <div className="flex flex-col">
-            <span className="text-xl font-display font-bold text-foreground">
-              {formatPrice(totalPrice)} IDR <span className="text-xs font-medium text-muted ml-0.5 opacity-70">{getUSD(totalPrice)}</span>
-            </span>
-            <div className="flex items-center gap-2">
-               <span className="text-[10px] text-muted line-through opacity-60">
-                 {formatPrice(Math.round(currentPrice * days))} IDR
-               </span>
-               <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">
-                  -{discountPercent}%
-               </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xl font-display font-bold text-foreground">
+                <PriceRoller value={totalPrice} /> IDR
+              </span>
+              <span className="text-[10px] font-medium text-muted opacity-70 leading-none">{getUSD(totalPrice)}</span>
+            </div>
+            
+            <div className="flex items-center gap-2 min-h-[14px]">
+               {(finalPricePerDay < bike.pricePerDay || appliedPromo) && (
+                 <div className="flex items-center gap-1.5">
+                   <span className="text-[10px] text-muted line-through decoration-muted/50">
+                     {formatPrice(bike.pricePerDay * days)} IDR
+                   </span>
+                   <span className="text-[10px] font-black text-red-500 leading-none">
+                     -{Math.round((1 - totalPrice / (bike.pricePerDay * days)) * 100)}%
+                   </span>
+                   <span className="text-[8px] font-black text-red-500/80 uppercase tracking-tighter">
+                     {appliedPromo ? 'promo code' : (days < 7 && bike.isPromoActive && bike.promoPrice && bike.promoPrice > 0 ? 'promo' : days >= 30 ? 'monthly' : 'weekly')}
+                   </span>
+                 </div>
+               )}
             </div>
           </div>
           
           <button 
+            disabled={!acceptedTerms}
             onClick={() => {
+              if (selectedDistrict === null) {
+                const mapEl = document.querySelector('.leaflet-container');
+                mapEl?.classList.add('ring-2', 'ring-red-500', 'shake-animation');
+                setTimeout(() => mapEl?.classList.remove('ring-2', 'ring-red-500', 'shake-animation'), 2000);
+                return;
+              }
               if (!isVerified) {
                 const el = document.getElementById('phone-input');
                 const container = el?.closest('.phone-input-container');
@@ -1048,13 +1803,14 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ bike, onClose })
               }
               setShowPayment(true);
             }}
-            className={`flex-1 max-w-[200px] py-4 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl transition-all ${
-              isVerified
+            className={cn(
+              "flex-1 max-w-[200px] py-4 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl transition-all",
+              isVerified && selectedDistrict !== null && acceptedTerms
                 ? 'bg-primary text-white shadow-primary/20 hover:scale-105 active:scale-95' 
-                : 'bg-muted/20 text-muted cursor-not-allowed'
-            }`}
+                : 'bg-muted/20 text-muted cursor-not-allowed opacity-50'
+            )}
           >
-            {language === 'ru' ? 'Оплатить' : 'Pay'}
+            {selectedDistrict === null ? 'Outside Zone' : 'Book'}
           </button>
         </div>
       </div>

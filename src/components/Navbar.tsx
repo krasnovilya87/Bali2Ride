@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bike as BikeIcon } from 'lucide-react';
+import { Palmtree } from 'lucide-react';
 
 export const Navbar = () => {
   return (
@@ -8,10 +8,10 @@ export const Navbar = () => {
         {/* Left: Logo */}
         <div className="flex items-center gap-2">
           <div className="bg-primary p-1.5 rounded-lg text-white">
-            <BikeIcon className="w-5 h-5" />
+            <Palmtree className="w-5 h-5" />
           </div>
           <span className="font-bold text-lg tracking-tight text-foreground">
-            Bali<span className="text-primary italic">2</span>Ride
+            Coco<span className="text-primary italic">Drive</span>
           </span>
         </div>
 

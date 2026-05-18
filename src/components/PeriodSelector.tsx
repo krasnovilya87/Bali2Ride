@@ -8,7 +8,7 @@ export const PeriodSelector = () => {
   const { language } = useLanguage();
 
   const content = {
-    ru: { title: 'СРОК АРЕНДЫ', days: 'дней', discount: 'Ваша скидка', select: 'Выберите количество дней' },
+    ru: { title: 'RENTAL PERIOD', days: 'days', discount: 'Your discount', select: 'Select number of days' },
     en: { title: 'RENTAL PERIOD', days: 'days', discount: 'Your discount', select: 'Select number of days' },
     id: { title: 'PERIODE SEWA', days: 'hari', discount: 'Diskon Anda', select: 'Pilih jumlah hari' },
     zh: { title: '租借期限', days: '天', discount: '您的折扣', select: '选择天数' },
@@ -50,7 +50,7 @@ export const PeriodSelector = () => {
               >
                 <span className="text-xl font-display font-bold leading-none">{val}</span>
                 <span className="text-[8px] uppercase font-bold tracking-tighter mt-1 opacity-60">
-                  {val === 1 ? (language === 'ru' ? 'день' : 'day') : t.days}
+                  {val === 1 ? 'day' : t.days}
                 </span>
               </button>
             ))}
@@ -62,7 +62,7 @@ export const PeriodSelector = () => {
                 {days}
               </span>
               <p className="text-[10px] text-muted uppercase font-bold tracking-widest mt-4">
-                {language === 'ru' && days === 1 ? 'день' : t.days}
+                {t.days}
               </p>
             </div>
             
@@ -71,7 +71,7 @@ export const PeriodSelector = () => {
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 key={discount}
-                className="bg-primary text-white p-6 rounded-[2.5rem] shadow-[0_0_40px_rgba(242,125,38,0.2)] text-center min-w-[160px]"
+                className="bg-red-600 text-white p-6 rounded-[2.5rem] shadow-[0_0_40px_rgba(220,38,38,0.2)] text-center min-w-[160px]"
               >
                 <p className="text-[10px] uppercase font-bold tracking-widest mb-1 opacity-80">{t.discount}</p>
                 <p className="text-5xl font-display font-bold leading-none">-{discount}%</p>
@@ -79,7 +79,7 @@ export const PeriodSelector = () => {
             ) : (
               <div className="h-[90px] flex items-center">
                 <p className="text-[10px] text-muted uppercase tracking-widest text-center px-4">
-                  {language === 'ru' ? 'Скидки начинаются от 7 дней' : 'Discounts start from 7 days'}
+                  Discounts start from 7 days
                 </p>
               </div>
             )}

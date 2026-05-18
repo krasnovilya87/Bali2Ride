@@ -5,21 +5,21 @@ import { useLanguage } from '../LanguageContext';
 
 const REVIEWS = [
   {
-    name: 'Александр',
-    role: 'Цифровой кочевник',
-    text: 'Лучший сервис на Бали. Байк доставили прямо к вилле в Чангу. Vario была в идеальном техническом состоянии.',
+    name: 'Alexander',
+    role: 'Digital Nomad',
+    text: 'The best service in Bali. The bike was delivered directly to my villa in Canggu. Vario was in perfect technical condition.',
     avatar: 'https://i.pravatar.cc/150?u=a1'
   },
   {
-    name: 'Мария',
-    role: 'Путешественница',
-    text: 'Брала Веспу для фотосессии и поездок. Очень вежливый персонал, помогли с выбором и объяснили все нюансы вождения.',
+    name: 'Maria',
+    role: 'Traveler',
+    text: 'I took a Vespa for a photo shoot and trips. Very polite staff, helped with the choice and explained all the nuances of driving.',
     avatar: 'https://i.pravatar.cc/150?u=a2'
   },
   {
-    name: 'Дмитрий',
-    role: 'Фрилансер',
-    text: 'Пользуюсь услугами BaliMoto уже полгода. Всегда на связи, если случается прокол колеса — приезжают и чинят за 20 минут.',
+    name: 'Dmitry',
+    role: 'Freelancer',
+    text: 'I have been using the services for six months now. They are always in touch, if a flat tire happens - they come and fix it in 20 minutes.',
     avatar: 'https://i.pravatar.cc/150?u=a3'
   }
 ];
