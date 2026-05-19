@@ -6,32 +6,29 @@ import { Bike } from '../types';
 export const seedBikes = async () => {
   try {
     const bikesRef = collection(db, 'bikes');
-    const snapshot = await getDocs(bikesRef);
     
     // Create a batch for efficiency
     const batch = writeBatch(db);
     
-    // Delete existing bikes first to ensure fresh seed
-    snapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
+    console.log('Starting sync of bikes from constants.ts...');
     
-    // Add new bikes from BIKES constant
+    // Add or update bikes from BIKES constant
     BIKES.forEach((bike, index) => {
       const bikeRef = doc(db, 'bikes', bike.id);
+      console.log(`Syncing ${bike.name}: ${bike.pricePerDay}/${bike.priceWeekly}/${bike.priceMonthly}`);
+      
       batch.set(bikeRef, {
         ...bike,
         order: index,
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
-      });
+      }, { merge: true }); // Use merge to avoid overwriting fields added via UI (like custom generalPhotos)
     });
     
     await batch.commit();
-    console.log('Database seeded successfully!');
+    console.log('Database synced successfully!');
     return true;
   } catch (error) {
-    console.error('Error seeding database:', error);
+    console.error('Error syncing database:', error);
     throw error;
   }
 };

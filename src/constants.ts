@@ -13,11 +13,11 @@ export const BIKES: Bike[] = [
     hasBigTrunk: false,
     hasPhoneHolder: true,
     hasUSB: true,
-    pricePerDay: 50000,
-    priceWeekly: 40000,
+    pricePerDay: 85000,
+    priceWeekly: 80000,
     priceMonthly: 26000,
     image: "https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&q=80&w=800",
-    description: "Beginner Friendly: Most popular choice for girls and first-time riders, best for photo",
+    description: "Stylish retro scooter perfect for relaxed Bali rides, cafes and beach sunsets.",
     features: ["USB charger", "lightweight", "retro"]
   },
   {
@@ -30,11 +30,11 @@ export const BIKES: Bike[] = [
     hasBigTrunk: true,
     hasPhoneHolder: true,
     hasUSB: true,
-    pricePerDay: 140000,
+    pricePerDay: 150000,
     priceWeekly: 130000,
     priceMonthly: 65000,
     image: "https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&q=80&w=800",
-    description: "All-rounder: Perfect balance of power and comfort for any distance.",
+    description: "Premium scooter with powerful performance and maximum comfort for Bali adventures.",
     features: ["ABS", "Large trunk", "Keyless", "LED"]
   },
   {
@@ -47,11 +47,11 @@ export const BIKES: Bike[] = [
     hasBigTrunk: false,
     hasPhoneHolder: true,
     hasUSB: false,
-    pricePerDay: 50000,
+    pricePerDay: 56000,
     priceWeekly: 50000,
     priceMonthly: 30000,
     image: "https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&q=80&w=800",
-    description: "Economy Choice: Simple, reliable, and great for daily short commutes.",
+    description: "Stylish and easy-to-ride scooter, perfect for everyday Bali adventures.",
     features: ["Flat floor for bags", "agile"]
   },
   {
@@ -64,11 +64,11 @@ export const BIKES: Bike[] = [
     hasBigTrunk: false,
     hasPhoneHolder: true,
     hasUSB: true,
-    pricePerDay: 60000,
+    pricePerDay: 63000,
     priceWeekly: 60000,
     priceMonthly: 40000,
     image: "https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&q=80&w=800",
-    description: "Fast City Move: Powerful engine in a compact body for heavy traffic.",
+    description: "Stylish and easy-to-ride scooter, perfect for everyday Bali adventures.",
     features: ["ABS", "Disc brakes", "high power"]
   },
   {
@@ -81,11 +81,11 @@ export const BIKES: Bike[] = [
     hasBigTrunk: true,
     hasPhoneHolder: true,
     hasUSB: true,
-    pricePerDay: 140000,
+    pricePerDay: 150000,
     priceWeekly: 125000,
     priceMonthly: 70000,
     image: "https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&q=80&w=800",
-    description: "Smooth Cruiser: For those who prefer a \"softer\" and more prestigious ride.",
+    description: "Premium scooter with smooth ride, spacious seat and maximum comfort for stylish Bali journeys.",
     features: ["ABS", "Large fuel tank", "premium comfort"]
   },
   {
@@ -98,11 +98,11 @@ export const BIKES: Bike[] = [
     hasBigTrunk: false,
     hasPhoneHolder: true,
     hasUSB: true,
-    pricePerDay: 140000,
+    pricePerDay: 150000,
     priceWeekly: 135000,
     priceMonthly: 85000,
     image: "https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&q=80&w=800",
-    description: "Active Riders: Sporty feel and great stability in corners.",
+    description: "Sporty scooter with aggressive design and dynamic performance for energetic Bali rides.",
     features: ["ABS", "Sporty look", "wide tires"]
   },
   {
@@ -119,7 +119,7 @@ export const BIKES: Bike[] = [
     priceWeekly: 225000,
     priceMonthly: 145000,
     image: "https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&q=80&w=800",
-    description: "Lifestyle & Style: Perfect for Canggu/Seminyak vibes and city cruising.",
+    description: "Iconic Italian scooter perfect for stylish Bali rides and unforgettable Instagram photos.",
     features: ["ABS", "Steel body", "status", "Italian style"]
   },
   {
@@ -132,11 +132,11 @@ export const BIKES: Bike[] = [
     hasBigTrunk: true,
     hasPhoneHolder: true,
     hasUSB: true,
-    pricePerDay: 170000,
+    pricePerDay: 175000,
     priceWeekly: 155000,
     priceMonthly: 70000,
     image: "https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&q=80&w=800",
-    description: "Explorer: Best for mountains (Bedugul/Kintamani) and bumpy roads.",
+    description: "Adventure-style scooter built for exploring Bali with comfort, power and premium travel vibes.",
     features: ["ABS", "Crossover suspension", "smooth ride"]
   },
   {
@@ -149,29 +149,12 @@ export const BIKES: Bike[] = [
     hasBigTrunk: true,
     hasPhoneHolder: true,
     hasUSB: true,
-    pricePerDay: 250000,
+    pricePerDay: 260000,
     priceWeekly: 240000,
     priceMonthly: 155000,
     image: "https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&q=80&w=800",
-    description: "Premium Touring: Long island trips and maximum highway comfort.",
+    description: "Premium maxi scooter with ultimate comfort, power and style for unforgettable Bali road trips.",
     features: ["ABS", "Fits 2 helmets", "Traction Control"]
-  },
-  {
-    id: "honda-beat",
-    name: "Honda Beat",
-    type: ["Budget", "Beginner"],
-    engineSize: 110,
-    bestFor: ["City"],
-    hasABS: false,
-    hasBigTrunk: false,
-    hasPhoneHolder: true,
-    hasUSB: false,
-    pricePerDay: 65000,
-    priceWeekly: 55000,
-    priceMonthly: 35000,
-    image: "https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&q=80&w=800",
-    description: "Budget/Pro: Best for navigating the narrowest \"gangs\" (small streets).",
-    features: ["Narrowest body", "fuel efficient"]
   },
   {
     id: "honda-genio",
@@ -187,7 +170,7 @@ export const BIKES: Bike[] = [
     priceWeekly: 65000,
     priceMonthly: 40000,
     image: "https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&q=80&w=800",
-    description: "Easy City Ride: A stylish and slightly more modern alternative to Scoopy.",
+    description: "Lightweight and easy scooter perfect for relaxed everyday Bali rides.",
     features: ["Next-gen frame", "easy for beginners"]
   },
   {
@@ -204,41 +187,7 @@ export const BIKES: Bike[] = [
     priceWeekly: 45000,
     priceMonthly: 30000,
     image: "https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&q=80&w=800",
-    description: "Trendsetter: Stylish, modern, and very easy to ride for beginners.",
+    description: "Trendy and stylish scooter perfect for Bali cafes, beach sunsets and aesthetic island adventures.",
     features: ["Hybrid engine", "stylish design"]
-  },
-  {
-    id: "yamaha-gear",
-    name: "Yamaha Gear",
-    type: "Budget",
-    engineSize: 125,
-    bestFor: ["City"],
-    hasABS: false,
-    hasBigTrunk: false,
-    hasPhoneHolder: true,
-    hasUSB: true,
-    pricePerDay: 80000,
-    priceWeekly: 70000,
-    priceMonthly: 50000,
-    image: "https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&q=80&w=800",
-    description: "Urban Utility: Great for carrying grocery bags or surf racks.",
-    features: ["Kids/Cargo footrests", "durable"]
-  },
-  {
-    id: "yamaha-lexi",
-    name: "Yamaha Lexi",
-    type: "Maxi",
-    engineSize: 155,
-    bestFor: ["City"],
-    hasABS: false,
-    hasBigTrunk: false,
-    hasPhoneHolder: true,
-    hasUSB: true,
-    pricePerDay: 120000,
-    priceWeekly: 105000,
-    priceMonthly: 60000,
-    image: "https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&q=80&w=800",
-    description: "Comfort Economy: A lighter alternative to NMAX with easy step-through.",
-    features: ["Flat floor", "wide seat"]
   }
 ];

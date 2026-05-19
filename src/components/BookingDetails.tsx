@@ -230,7 +230,7 @@ const CustomTimePicker = ({ value, onChange, language }: { value: string, onChan
         onClick={() => setIsOpen(!isOpen)}
         className="w-full h-[54px] bg-surface border border-border rounded-2xl pl-11 pr-4 text-sm font-medium focus:border-primary cursor-pointer hover:border-primary/40 transition-all flex items-center justify-between"
       >
-        <span className="font-display font-medium text-base">{currentValue}</span>
+        <span className="font-display font-medium text-sm">{currentValue}</span>
         <ChevronLeft className={`w-4 h-4 text-muted transition-transform ${isOpen ? 'rotate-90' : '-rotate-90'}`} />
       </div>
 
@@ -403,7 +403,7 @@ const PlaceAutocomplete = ({ onPlaceSelect, value, onChange }: { onPlaceSelect: 
       type="text" 
       defaultValue={value}
       placeholder="Delivery Address"
-      className="w-full h-[54px] bg-surface border border-border rounded-2xl pl-11 pr-12 text-sm font-medium focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all outline-none relative z-0"
+      className="w-full h-[54px] bg-surface border border-border rounded-2xl pl-11 pr-10 text-sm font-medium focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all outline-none relative z-0"
     />
   );
 };
@@ -1105,7 +1105,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
       className="fixed inset-0 z-[100] bg-background flex flex-col h-screen overflow-y-auto"
     >
       {/* Header Image Carousel */}
-      <div className="relative w-full h-[32vh] shrink-0 bg-muted group/header">
+      <div className="relative w-full h-[32vh] sm:h-[45vh] shrink-0 bg-muted group/header">
         <div 
           ref={carouselRef}
           className="flex h-full overflow-x-auto snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
@@ -1159,9 +1159,9 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
 
         <button 
           onClick={onClose}
-          className="absolute top-6 left-6 p-3 bg-white/20 backdrop-blur-xl rounded-2xl border border-white/20 text-white hover:bg-white/40 transition-all active:scale-90 z-20"
+          className="absolute top-4 left-4 sm:top-6 sm:left-6 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-transparent rounded-full border border-white/20 text-white hover:bg-white/10 transition-all active:scale-90 z-20"
         >
-          <ChevronLeft className="w-6 h-6" />
+          <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
 
         {/* Swipe Hint */}

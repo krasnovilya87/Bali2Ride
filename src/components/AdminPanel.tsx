@@ -7,7 +7,7 @@ import { seedBikes } from '../services/seedService';
 import { getAreas } from '../services/areaService';
 import { useLanguage } from '../LanguageContext';
 import { Bike, BikeType, ColorReference, Owner, BikeListing, Area, AdminContacts, PromoCode, Booking } from '../types';
-import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc, getDocs } from 'firebase/firestore';
 import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
 import { cn, getPhoneInfo, formatPrice } from '../lib/utils';
@@ -19,22 +19,56 @@ export const AdminPanel = ({ isOpen, onClose }: { isOpen: boolean, onClose: () =
   const [isAdmin, setIsAdmin] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isDbConnected, setIsDbConnected] = useState(false);
+
+  useEffect(() => {
+    // Check connection by seeing if we can reach Firebase
+    const checkConnection = async () => {
+      try {
+        // A simple check - try to get a doc or just wait for auth
+        if (auth.currentUser) {
+          setIsDbConnected(true);
+        }
+      } catch (e) {
+        setIsDbConnected(false);
+      }
+    };
+    checkConnection();
+  }, [user]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+        console.log("Current User UID:", currentUser.uid, "Email:", currentUser.email);
         // Check if user is in admins collection
         const adminRef = doc(db, 'admins', currentUser.uid);
         const adminDoc = await getDoc(adminRef);
         
         if (adminDoc.exists()) {
+          console.log("User verified as ADMIN");
           setIsAdmin(true);
         } else {
           setIsAdmin(false);
-          // If this is the FIRST user or specifically requested, we could add them
-          // For now, let's just log it
-          console.log("User is not an admin:", currentUser.email);
+          console.warn("User is NOT an admin in Firestore:", currentUser.email);
+          
+          // Check if admins collection is empty - if so, allow auto-promotion of the first user
+          try {
+            const adminsRef = collection(db, 'admins');
+            const snapshot = await getDocs(adminsRef);
+            if (snapshot.empty) {
+              console.log("No admins found in DB. Auto-promoting first user...");
+              await setDoc(adminRef, {
+                email: currentUser.email,
+                role: 'superadmin',
+                createdAt: serverTimestamp()
+              });
+              setIsAdmin(true);
+              showNotification("Initial admin account created for you!", "success");
+            }
+          } catch (e) {
+            console.error("Auto-promotion check failed:", e);
+          }
         }
       } else {
         setIsAdmin(false);
@@ -48,12 +82,13 @@ export const AdminPanel = ({ isOpen, onClose }: { isOpen: boolean, onClose: () =
     setAuthLoading(true);
     try {
       const provider = new GoogleAuthProvider();
+      console.log("Starting Google login popup...");
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error("Login failed:", error);
       showNotification("Login failed. Check console for details.", "error");
     } finally {
-      setAuthLoading(true); // Wait for auth state change
+      // Auth state listener handles cleaning up loading
     }
   };
 
@@ -63,18 +98,22 @@ export const AdminPanel = ({ isOpen, onClose }: { isOpen: boolean, onClose: () =
 
   const handleSyncData = async () => {
     if (!isAdmin) {
-      showNotification("Only admins can sync data.", "error");
+      showNotification("Only admins can sync data. Please login first.", "error");
       return;
     }
 
+    console.log("Admin initiated SYNC of BIKES constant to Firestore...");
     setIsSyncing(true);
     try {
       await seedBikes();
-      showNotification("Data synced successfully! Reloading...", "success");
-      setTimeout(() => window.location.reload(), 1500);
+      showNotification("Prices and bikes synced from code constants! Reloading...", "success");
+      setTimeout(() => {
+        console.log("Triggering reload after sync...");
+        window.location.reload();
+      }, 1500);
     } catch (error) {
       console.error("Sync failed:", error);
-      showNotification("Sync failed. Check console.", "error");
+      showNotification("Sync failed. Check console and permissions.", "error");
     } finally {
       setIsSyncing(false);
     }
@@ -1196,9 +1235,20 @@ export const AdminPanel = ({ isOpen, onClose }: { isOpen: boolean, onClose: () =
         {/* Header */}
         <div className="px-8 py-6 border-b border-border flex items-center justify-between bg-surface/30 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-6 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-            <h2 className="text-2xl font-display font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent shrink-0">
-              Admin Panel
-            </h2>
+            <div className="flex flex-col shrink-0">
+              <h2 className="text-2xl font-display font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                Admin Panel
+              </h2>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <div className={cn(
+                  "w-1.5 h-1.5 rounded-full transition-colors duration-500",
+                  isDbConnected ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"
+                )} />
+                <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">
+                  Firebase {isDbConnected ? 'connected' : 'disconnected'}
+                </span>
+              </div>
+            </div>
             <div className="flex bg-muted/20 p-1 rounded-2xl border border-border/50 shrink-0">
               <button 
                 onClick={() => setActiveTab('bookings')}
