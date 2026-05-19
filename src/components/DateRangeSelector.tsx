@@ -14,7 +14,7 @@ export const DateRangeSelector = () => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const dateLocale = language === 'ru' ? ru : enUS;
+  const dateLocale = enUS;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

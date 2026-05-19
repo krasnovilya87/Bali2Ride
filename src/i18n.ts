@@ -106,7 +106,7 @@ const baseEn: Translations = {
     title: 'What our clients say',
   },
   footer: {
-    desc: 'Easy booking. Fair price',
+    desc: 'Easy booking. Best price',
     nav: 'Navigation',
     services: 'Services',
     contacts: 'Contacts',
@@ -129,9 +129,9 @@ export const translations: Record<Language, Translations> = {
     hero: { subtitle: 'Остров Бали / Приключения ждут', title1: 'Свобода на', title2: 'двух колесах', description: 'Аренда надежных байков на Бали с доставкой к вашей вилле.', btnCatalog: 'Смотреть каталог', btnTerms: 'Условия аренды', freeDelivery: 'Бесплатная доставка', deliverySub: 'В любую точку Южного Бали', insurance: 'Полная страховка', insuranceSub: 'Ваше спокойствие — наш приоритет', support: 'Поддержка 24/7', supportSub: 'Всегда на связи в WhatsApp' },
     catalog: { subtitle: 'Наш парк', title1: 'Выберите свой', title2: 'идеальный байк', all: 'All', scooters: 'Scooters', enduro: 'Adventure', sport: 'Sport', cruisers: 'Cruisers', notFoundTitle: 'Не нашли то, что нужно?', notFoundDesc: 'Свяжитесь с нами в WhatsApp.', whatsappBtn: 'Написать в WhatsApp', perDay: 'день', dateFrom: 'С', dateTo: 'По' },
     testimonials: { subtitle: 'Отзывы', title: 'Что говорят наши клиенты' },
-    footer: { desc: 'Easy booking. Fair price', nav: 'Навигация', services: 'Услуги', contacts: 'Контакты', dayRent: 'Посуточная аренда', longRent: 'Долгосрочная аренда', delivery: 'Доставка в отель', gear: 'Экипировка включена' },
+    footer: { desc: 'Easy booking. Best price', nav: 'Навигация', services: 'Услуги', contacts: 'Контакты', dayRent: 'Посуточная аренда', longRent: 'Долгосрочная аренда', delivery: 'Доставка в отель', gear: 'Экипировка включена' },
     booking: {
-      outOfZone: 'Ваш адрес находится за пределами нашей текущей зоны логистики. Пожалуйста, отправьте запрос в службу поддержки, и мы постараемся что-нибудь придумать!',
+      outOfZone: 'Your address is outside our current logistics coverage area. Please submit a support request, and we\'ll try to work something out!',
       payNow: 'Оплатить сейчас',
       payOnDelivery: 'При получении',
     }

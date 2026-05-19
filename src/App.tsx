@@ -18,13 +18,16 @@ import { db } from './lib/firebase';
 import { AdminPanel } from './components/AdminPanel';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
+import { FAQ } from './components/FAQ';
 import { getLatestExchangeRates, updateExchangeRates } from './services/dataService';
+import { APIProvider } from '@vis.gl/react-google-maps';
 
 const AppContent = () => {
   const { selectedBike, setSelectedBike } = useRental();
   const [showAdmin, setShowAdmin] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [showFAQ, setShowFAQ] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -89,11 +92,13 @@ const AppContent = () => {
         onAdminClick={() => setShowAdmin(true)} 
         onPrivacyClick={() => setShowPrivacy(true)}
         onTermsClick={() => setShowTerms(true)}
+        onFAQClick={() => setShowFAQ(true)}
       />
 
       <AdminPanel isOpen={showAdmin} onClose={() => setShowAdmin(false)} />
       <PrivacyPolicy isOpen={showPrivacy} onClose={() => setShowPrivacy(false)} />
       <TermsOfService isOpen={showTerms} onClose={() => setShowTerms(false)} />
+      <FAQ isOpen={showFAQ} onClose={() => setShowFAQ(false)} />
 
       <AnimatePresence>
         {selectedBike && (
@@ -111,11 +116,13 @@ const AppContent = () => {
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <RentalProvider>
-        <AppContent />
-      </RentalProvider>
-    </LanguageProvider>
+    <APIProvider apiKey={process.env.GOOGLE_MAPS_PLATFORM_KEY || ''} version="weekly" libraries={['places']}>
+      <LanguageProvider>
+        <RentalProvider>
+          <AppContent />
+        </RentalProvider>
+      </LanguageProvider>
+    </APIProvider>
   );
 }
 

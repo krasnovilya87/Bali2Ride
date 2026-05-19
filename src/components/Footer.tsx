@@ -2,7 +2,7 @@ import React from 'react';
 import { Bike, Instagram, MessageCircle, Mail, MapPin, Phone, Send, MessageSquareText } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 
-export const Footer = ({ onAdminClick, onPrivacyClick, onTermsClick }: { onAdminClick?: () => void, onPrivacyClick?: () => void, onTermsClick?: () => void }) => {
+export const Footer = ({ onAdminClick, onPrivacyClick, onTermsClick, onFAQClick }: { onAdminClick?: () => void, onPrivacyClick?: () => void, onTermsClick?: () => void, onFAQClick?: () => void }) => {
   const { t } = useLanguage();
 
   return (
@@ -20,6 +20,13 @@ export const Footer = ({ onAdminClick, onPrivacyClick, onTermsClick }: { onAdmin
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <button 
+            onClick={onFAQClick}
+            className="text-[8px] text-muted uppercase tracking-[0.2em] opacity-50 hover:opacity-100 transition-opacity underline decoration-dotted underline-offset-4"
+          >
+            FAQ
+          </button>
+          <span className="text-[8px] text-muted/30">•</span>
           <button 
             onClick={onPrivacyClick}
             className="text-[8px] text-muted uppercase tracking-[0.2em] opacity-50 hover:opacity-100 transition-opacity underline decoration-dotted underline-offset-4"

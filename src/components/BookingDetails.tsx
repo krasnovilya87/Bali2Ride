@@ -13,32 +13,13 @@ import { format, setHours, setMinutes, addDays } from 'date-fns';
 import { ru, enUS } from 'date-fns/locale';
 import { DayPicker, DateRange } from 'react-day-picker';
 import { startOfToday } from 'date-fns';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import { APIProvider, Map, AdvancedMarker, Pin, Marker, useMap, useMapsLibrary, useAdvancedMarkerRef, ControlPosition, MapControl } from '@vis.gl/react-google-maps';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import { type CountryCode, parsePhoneNumberFromString } from 'libphonenumber-js';
-
-// Fix for default marker icon
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerIconRetina from 'leaflet/dist/images/marker-icon-2x.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-
-const DefaultIcon = L.icon({
-    iconUrl: markerIcon,
-    iconRetinaUrl: markerIconRetina,
-    shadowUrl: markerShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    tooltipAnchor: [16, -28],
-    shadowSize: [41, 41]
-});
-
-L.Marker.prototype.options.icon = DefaultIcon;
 
 import { normalizePhoneNumber, isPhoneValid } from '../lib/phoneUtils';
 
@@ -78,8 +59,8 @@ const MapPicker = ({
   selectedDistrict,
   setSelectedDistrict
 }: { 
-  position: L.LatLng, 
-  setPosition: (p: L.LatLng) => void, 
+  position: {lat: number, lng: number}, 
+  setPosition: (p: {lat: number, lng: number}) => void, 
   setLocation: (l: string) => void, 
   language: string, 
   isFullscreen: boolean, 
@@ -87,7 +68,6 @@ const MapPicker = ({
   selectedDistrict: string | null | undefined,
   setSelectedDistrict: (d: string | null) => void
 }) => {
-  const mapRef = useRef<L.Map | null>(null);
   const [areas, setAreas] = useState<AreaCollection | null>(null);
 
   useEffect(() => {
@@ -110,106 +90,41 @@ const MapPicker = ({
     setSelectedDistrict(foundDistrict);
   }, [position, areas]);
 
-  const fetchAddress = async (lat: number, lon: number) => {
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`);
-      const data = await response.json();
-      if (data && data.display_name) {
-        setLocation(data.display_name);
-      }
-    } catch (error) {
-      console.error("Geocoding error:", error);
-    }
-  };
+  const map = useMap();
+  const places = useMapsLibrary('places');
 
   const handleMyLocation = () => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const newPos = new L.LatLng(pos.coords.latitude, pos.coords.longitude);
-      setPosition(newPos);
-      fetchAddress(pos.coords.latitude, pos.coords.longitude);
-    });
-  };
-
-  const MapControls = () => {
-    const map = useMap();
-    const containerRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-      if (containerRef.current) {
-        L.DomEvent.disableClickPropagation(containerRef.current);
-      }
-    }, []);
+    if (!navigator.geolocation) {
+      console.warn("Geolocation is not supported by your browser");
+      return;
+    }
     
-    return (
-      <div ref={containerRef} className="absolute bottom-4 right-4 z-[400] flex flex-col gap-3">
-        {/* Zoom Controls - Desktop Only */}
-        <div className="hidden md:flex flex-col gap-2">
-          <button 
-            type="button"
-            onClick={(e) => { 
-              e.preventDefault();
-              e.stopPropagation(); 
-              map.zoomIn(); 
-            }}
-            className="w-10 h-10 bg-white shadow-xl rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all border border-border/50 active:scale-90"
-            id="map-zoom-in"
-            title="Zoom in"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-          <button 
-            type="button"
-            onClick={(e) => { 
-              e.preventDefault();
-              e.stopPropagation(); 
-              map.zoomOut(); 
-            }}
-            className="w-10 h-10 bg-white shadow-xl rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all border border-border/50 active:scale-90"
-            id="map-zoom-out"
-            title="Zoom out"
-          >
-            <Minus className="w-5 h-5" />
-          </button>
-        </div>
-
-        <button 
-          type="button"
-          onClick={(e) => { 
-            e.preventDefault();
-            e.stopPropagation(); 
-            handleMyLocation(); 
-          }}
-          className="w-10 h-10 bg-white shadow-xl rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all border border-border/50 active:scale-90"
-          id="map-my-location"
-          title="My location"
-        >
-          <Navigation className="w-5 h-5 fill-current" />
-        </button>
-      </div>
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const newPos = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+        setPosition(newPos);
+        
+        if (places) {
+          const geocoder = new google.maps.Geocoder();
+          geocoder.geocode({ location: newPos }, (results, status) => {
+            if (status === 'OK' && results?.[0]) {
+              setLocation(results[0].formatted_address);
+            }
+          });
+        }
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
-  const MapEvents = () => {
-    const map = useMapEvents({
-      click(e) {
-        setPosition(e.latlng);
-        fetchAddress(e.latlng.lat, e.latlng.lng);
-      },
-    });
-
-    useEffect(() => {
-      map.flyTo(position, map.getZoom());
-    }, [position]);
-
-    useEffect(() => {
-      setTimeout(() => {
-        map.invalidateSize();
-      }, 300);
-    }, [isFullscreen]);
-
-    return null;
-  };
+  useEffect(() => {
+    if (map) {
+      map.panTo(position);
+    }
+  }, [map, position]);
 
   return (
     <div className={`transition-all duration-300 ${
@@ -218,40 +133,59 @@ const MapPicker = ({
         : 'h-64 w-full rounded-2xl overflow-hidden border border-border relative group'
     }`}>
       <div className={`w-full h-full relative ${isFullscreen ? 'rounded-3xl overflow-hidden border-4 border-primary/20 shadow-2xl' : ''}`}>
-        <MapContainer 
-          center={position} 
-          zoom={16} 
-          scrollWheelZoom={false} 
-          className="h-full w-full"
-          attributionControl={false}
-          zoomControl={false}
-          ref={mapRef}
+        <Map
+          defaultCenter={position}
+          defaultZoom={16}
+          gestureHandling="greedy"
+          disableDefaultUI={true}
+          style={{ width: '100%', height: '100%' }}
+          onClick={(e) => {
+            if (e.detail.latLng) {
+              const newPos = e.detail.latLng;
+              setPosition(newPos);
+              const geocoder = new google.maps.Geocoder();
+              geocoder.geocode({ location: newPos }, (results, status) => {
+                if (status === 'OK' && results?.[0]) {
+                  setLocation(results[0].formatted_address);
+                } else if (status === 'REQUEST_DENIED') {
+                  console.error("Geocoding API not enabled in Cloud Console");
+                }
+              });
+            }
+          }}
+          internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
         >
-          <TileLayer
-            url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-          />
           <Marker position={position} />
-          <MapEvents />
-          <MapControls />
-        </MapContainer>
-        
-        <div className="absolute top-4 right-4 z-[400] flex flex-col gap-2">
-          <button 
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            className="w-10 h-10 bg-white/90 backdrop-blur shadow-xl rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all border border-border/50"
-          >
-            {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-          </button>
-        </div>
+          
+          <MapControl position={ControlPosition.RIGHT_BOTTOM}>
+            <div className="flex flex-col gap-3 m-4">
+              <button 
+                type="button"
+                onClick={handleMyLocation}
+                className="w-10 h-10 bg-white shadow-xl rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all border border-border/50 active:scale-90"
+                title="My location"
+              >
+                <Navigation className="w-5 h-5 fill-current" />
+              </button>
+            </div>
+          </MapControl>
 
-        {/* Removed fullscreen tooltip */}
+          <MapControl position={ControlPosition.RIGHT_TOP}>
+             <button 
+                onClick={() => setIsFullscreen(!isFullscreen)}
+                className="w-10 h-10 bg-white/90 backdrop-blur shadow-xl rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all border border-border/50 m-4"
+              >
+                {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+              </button>
+          </MapControl>
+        </Map>
         
         {/* District Badge */}
         {selectedDistrict && (
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="absolute bottom-4 left-4 z-[400] flex items-center gap-1.5 px-2 py-1 bg-white/90 backdrop-blur shadow-lg rounded-lg border border-border/50"
+            className="absolute bottom-[30px] left-3 z-[400] flex items-center gap-1.5 px-2 py-1 bg-white/90 backdrop-blur shadow-lg rounded-lg border border-border/50"
           >
             <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
             <span className="text-[8px] font-bold text-primary uppercase tracking-wider">
@@ -294,9 +228,9 @@ const CustomTimePicker = ({ value, onChange, language }: { value: string, onChan
     <div className="relative group">
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-surface border border-border rounded-2xl py-4 pl-11 pr-4 text-sm font-medium focus:border-primary cursor-pointer hover:border-primary/40 transition-all flex items-center justify-between"
+        className="w-full h-[54px] bg-surface border border-border rounded-2xl pl-11 pr-4 text-sm font-medium focus:border-primary cursor-pointer hover:border-primary/40 transition-all flex items-center justify-between"
       >
-        <span className="font-display font-medium text-lg leading-none">{currentValue}</span>
+        <span className="font-display font-medium text-base">{currentValue}</span>
         <ChevronLeft className={`w-4 h-4 text-muted transition-transform ${isOpen ? 'rotate-90' : '-rotate-90'}`} />
       </div>
 
@@ -319,7 +253,7 @@ const CustomTimePicker = ({ value, onChange, language }: { value: string, onChan
                       onChange(slot);
                       setIsOpen(false);
                     }}
-                    className={`py-2.5 px-4 rounded-xl text-sm font-medium transition-all text-left flex items-center justify-between ${
+                    className={`py-2 px-4 rounded-xl text-xs font-medium transition-all text-left flex items-center justify-between ${
                       slot === currentValue 
                         ? 'bg-primary text-white shadow-lg shadow-primary/20' 
                         : 'hover:bg-primary/5 text-foreground'
@@ -389,6 +323,91 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 }
 
+const PlaceAutocomplete = ({ onPlaceSelect, value, onChange }: { onPlaceSelect: (place: google.maps.places.PlaceResult | null) => void, value: string, onChange: (val: string) => void }) => {
+  const places = useMapsLibrary('places');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync value from prop to input ref directly to avoid React controlled input issues with Autocomplete
+  useEffect(() => {
+    if (inputRef.current && inputRef.current.value !== value) {
+      inputRef.current.value = value;
+    }
+  }, [value]);
+
+  const onPlaceSelectRef = useRef(onPlaceSelect);
+  useEffect(() => {
+    onPlaceSelectRef.current = onPlaceSelect;
+  }, [onPlaceSelect]);
+
+  useEffect(() => {
+    if (!places || !inputRef.current) return;
+
+    const options = {
+      fields: ['geometry', 'name', 'formatted_address', 'place_id'],
+      componentRestrictions: { country: 'id' } // Restrict to Indonesia for Bali context
+    };
+
+    const autocomplete = new places.Autocomplete(inputRef.current, options);
+    
+    const handleInput = () => {
+      if (inputRef.current) {
+        onChange(inputRef.current.value);
+      }
+    };
+
+    inputRef.current.addEventListener('input', handleInput);
+
+    const listener = autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (place && place.geometry) {
+        onPlaceSelectRef.current(place);
+      }
+    });
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        const pacContainer = document.querySelector('.pac-container') as HTMLElement;
+        if (pacContainer && pacContainer.style.display !== 'none') {
+          const selected = pacContainer.querySelector('.pac-item-selected');
+          const firstResult = pacContainer.querySelector('.pac-item');
+          
+          if (!selected && firstResult) {
+            // Simulate down arrow and then return to let native enter handle it
+            const downArrow = new KeyboardEvent('keydown', {
+              key: 'ArrowDown',
+              code: 'ArrowDown',
+              keyCode: 40,
+              which: 40,
+              bubbles: true
+            });
+            inputRef.current?.dispatchEvent(downArrow);
+          }
+        }
+      }
+    };
+
+    inputRef.current?.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      google.maps.event.clearInstanceListeners(autocomplete);
+      inputRef.current?.removeEventListener('keydown', handleKeyDown);
+      inputRef.current?.removeEventListener('input', handleInput);
+      const pacContainers = document.querySelectorAll('.pac-container');
+      pacContainers.forEach(container => container.remove());
+    };
+  }, [places]);
+
+  return (
+    <input 
+      ref={inputRef}
+      type="text" 
+      defaultValue={value}
+      placeholder="Delivery Address"
+      className="w-full h-[54px] bg-surface border border-border rounded-2xl pl-11 pr-12 text-sm font-medium focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all outline-none relative z-0"
+    />
+  );
+};
+
 export const BookingDetails: React.FC<BookingDetailsProps> = ({ 
   bike, 
   onClose,
@@ -399,8 +418,33 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
   const { range, days, setRange } = useRental();
   const [selectedColor, setSelectedColor] = useState(bike.colors?.[0]?.name || '');
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [location, setLocation] = useState('Open motorcycle parking at the airport');
-  const [mapPosition, setMapPosition] = useState<L.LatLng>(new L.LatLng(-8.7447, 115.1638)); // Precise Bali Airport Bike Parking
+  
+  // Default values for Ordinary Parking
+  const DEFAULT_LAT = -8.7466;
+  const DEFAULT_LNG = 115.1667;
+  const DEFAULT_LOC = 'Ordinary Parking (Parkir Biasa), Tuban, Kec. Kuta, Kabupaten Badung, Bali 80361';
+
+  // State initialization with localStorage fallback
+  const [location, setLocation] = useState(() => {
+    return localStorage.getItem('default_location') || DEFAULT_LOC;
+  });
+  
+  const [mapPosition, setMapPosition] = useState<{lat: number, lng: number}>(() => {
+    const savedLat = localStorage.getItem('default_lat');
+    const savedLng = localStorage.getItem('default_lng');
+    if (savedLat && savedLng) {
+      return {lat: parseFloat(savedLat), lng: parseFloat(savedLng)};
+    }
+    return {lat: DEFAULT_LAT, lng: DEFAULT_LNG};
+  });
+
+  // Persist location changes
+  useEffect(() => {
+    localStorage.setItem('default_location', location);
+    localStorage.setItem('default_lat', mapPosition.lat.toString());
+    localStorage.setItem('default_lng', mapPosition.lng.toString());
+  }, [location, mapPosition]);
+
   const [deliveryTime, setDeliveryTime] = useState('09:00');
   const [helmet1Size, setHelmet1Size] = useState('XL');
   const [helmet2Size, setHelmet2Size] = useState('-');
@@ -418,6 +462,8 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [adminContacts, setAdminContacts] = useState<AdminContacts | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(true);
+  const [availabilityStatus, setAvailabilityStatus] = useState<'idle' | 'searching' | 'available' | 'unavailable'>('idle');
+
 
   // Promo Code State
   const [showPromoInput, setShowPromoInput] = useState(false);
@@ -492,7 +538,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
   
   const calendarRef = useRef<HTMLDivElement>(null);
   
-  const dateLocale = language === 'ru' ? ru : enUS;
+  const dateLocale = enUS;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -505,26 +551,6 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isCalendarOpen]);
-
-  const [isSearching, setIsSearching] = useState(false);
-  const handleSearch = async () => {
-    if (!location.trim()) return;
-    setIsSearching(true);
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`);
-      const data = await response.json();
-      if (data && data.length > 0) {
-        const newPos = new L.LatLng(parseFloat(data[0].lat), parseFloat(data[0].lon));
-        setMapPosition(newPos);
-      }
-    } catch (error) {
-      console.error("Search error:", error);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const [availabilityStatus, setAvailabilityStatus] = useState<'idle' | 'searching' | 'available' | 'unavailable'>('idle');
 
   useEffect(() => {
     if (range.from && range.to) {
@@ -827,19 +853,35 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
           totalPrice,
           totalPriceDisplay: selectedMethodId === 'crypto' 
             ? getUSDT(totalPrice) 
-            : `${formatPrice(totalPrice)} IDR`,
+            : selectedMethodId === 'sbp'
+              ? getRUB(totalPrice)
+              : `${formatPrice(totalPrice)} IDR`,
           location,
+          lat: mapPosition.lat,
+          lng: mapPosition.lng,
           deliveryTime,
           helmet1Size,
           helmet2Size,
           surfRack,
           paymentMethod: selectedMethodId,
+          paymentTiming,
           paymentStatus
         },
         customerDetails: { name, phone, email }
       })
     });
   };
+
+  const handlePlaceSelect = React.useCallback((place: google.maps.places.PlaceResult | null) => {
+    if (place && place.geometry?.location) {
+      const newPos = {
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng()
+      };
+      setMapPosition(newPos);
+      setLocation(place.formatted_address || place.name || '');
+    }
+  }, []);
 
   if (showPayment) {
     return (
@@ -1454,31 +1496,29 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="md:col-span-3 relative group">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary opacity-60 z-10" />
-                <input 
-                  type="text" 
+          <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-start">
+            <div className="flex-1 relative group w-full">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary opacity-60 z-10 pointer-events-none" />
+                <PlaceAutocomplete 
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  placeholder="Delivery Address"
-                  className="w-full bg-surface border border-border rounded-2xl py-4 pl-11 pr-14 text-sm font-medium focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all outline-none"
+                  onChange={setLocation}
+                  onPlaceSelect={handlePlaceSelect}
                 />
-                <button 
-                  onClick={handleSearch}
-                  disabled={isSearching}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-primary hover:bg-primary/10 rounded-xl transition-all disabled:opacity-50"
-                >
-                  {isSearching ? (
-                    <div className="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-                  ) : (
-                    <Search className="w-5 h-5" />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  {location && (
+                    <button 
+                      type="button"
+                      onClick={() => setLocation('')}
+                      className="w-10 h-10 flex items-center justify-center text-muted hover:text-foreground transition-all opacity-40 hover:opacity-100"
+                      title="Clear"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   )}
-                </button>
+                </div>
               </div>
 
-            <div className="space-y-2">
+            <div className="w-full sm:w-[140px] shrink-0">
               <div className="relative">
                 <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary opacity-60 z-10 pointer-events-none" />
                 <CustomTimePicker 
