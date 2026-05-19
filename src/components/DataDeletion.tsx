@@ -86,8 +86,8 @@ export const DataDeletion = () => {
         </motion.div>
       </main>
 
-      <footer className="p-12 border-t border-border bg-surface/30">
-        <div className="max-w-4xl mx-auto flex flex-col items-center gap-8">
+      <footer className="p-6 border-t border-border bg-surface/30">
+        <div className="max-w-4xl mx-auto flex flex-col items-center gap-4">
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
             <Link 
               to="/faq"

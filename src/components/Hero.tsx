@@ -26,7 +26,7 @@ export const Hero = () => {
           transition={{ duration: 0.8 }}
           className="flex flex-col items-center"
         >
-          <h1 className="text-5xl md:text-8xl font-display font-bold leading-tight mb-6 uppercase tracking-tighter">
+          <h1 className="text-3xl sm:text-6xl md:text-8xl font-display font-bold leading-[1.1] mb-6 uppercase tracking-tighter">
             {t.hero.title1} <br />
             <span className="text-primary">{t.hero.title2}</span>
           </h1>

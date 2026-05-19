@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Info, Zap, ShieldCheck, Briefcase, MapPin, Compass, Mountain, Camera, Smartphone, Usb } from 'lucide-react';
 import { Bike } from '../types';
@@ -27,6 +27,18 @@ const BEST_FOR_CATEGORIES = [
 ];
 
 export const BikeInfoModal: React.FC<BikeInfoModalProps> = ({ bike, isOpen, onClose }) => {
+  // Lock body scroll when component is mounted and open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   // Prepare data for the Best For assessment

@@ -172,15 +172,14 @@ export const FAQ: React.FC<FAQProps> = ({ isOpen, onClose }) => {
             </div>
 
             {/* Footer */}
-            <div className="p-6 bg-white/[0.02] border-t border-white/5 space-y-8">
+            <div className="p-4 bg-white/[0.02] border-t border-white/5 space-y-4">
               <button 
                 onClick={onClose}
                 className="w-full h-12 bg-white text-black rounded-xl font-display font-black text-sm hover:scale-[1.01] active:scale-[0.98] transition-all"
               >
                 Close
               </button>
-
-              <div className="flex flex-col items-center gap-6 pt-4 pb-4">
+              <div className="flex flex-col items-center gap-3 pt-2 pb-2">
                 <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
                   <Link to="/faq" className="text-[9px] text-muted uppercase tracking-[0.2em] opacity-40 hover:opacity-100 transition-opacity underline decoration-dotted underline-offset-4">FAQ</Link>
                   <span className="text-[9px] text-muted/20">•</span>

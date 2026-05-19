@@ -442,6 +442,14 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
     localStorage.setItem('default_lng', mapPosition.lng.toString());
   }, [location, mapPosition]);
 
+  // Lock body scroll when component is mounted
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   const [deliveryTime, setDeliveryTime] = useState('09:00');
   const [helmet1Size, setHelmet1Size] = useState('XL');
   const [helmet2Size, setHelmet2Size] = useState('-');
@@ -886,9 +894,9 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
         initial={{ opacity: 0, x: '100%' }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: '100%' }}
-        className="fixed inset-0 z-[200] bg-background flex flex-col h-screen overflow-y-auto"
+        className="fixed inset-0 z-[200] bg-background flex flex-col h-[100dvh] overflow-y-auto overscroll-none"
       >
-        <div className="pt-4 px-6 pb-2">
+        <div className="pt-4 px-6 pb-2 shrink-0">
           <button onClick={() => setShowPayment(false)} className="p-2 -ml-2 hover:bg-black/5 rounded-xl transition-colors">
             <ChevronLeft className="w-6 h-6" />
           </button>
@@ -1099,10 +1107,10 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed inset-0 z-[100] bg-background flex flex-col h-screen overflow-y-auto"
+      className="fixed inset-0 z-[100] bg-background flex flex-col h-[100dvh] overflow-y-auto overscroll-none"
     >
       {/* Header Image Carousel */}
-      <div className="relative w-full h-[32vh] sm:h-[45vh] shrink-0 bg-muted group/header">
+      <div className="relative w-full h-[30vh] sm:h-[45vh] shrink-0 bg-muted group/header">
         <div 
           ref={carouselRef}
           className="flex h-full overflow-x-auto snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
@@ -1175,7 +1183,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
       </div>
 
       {/* Content */}
-      <div className="flex-grow px-4 py-2 max-w-2xl mx-auto w-full space-y-3">
+      <div className="flex-grow px-4 pt-2 pb-32 max-w-2xl mx-auto w-full space-y-3">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-display font-bold text-foreground leading-tight">
@@ -1395,7 +1403,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
                   key={size}
                   type="button"
                   onClick={() => setHelmet1Size(size)}
-                  className={`flex-1 py-1.5 text-[9px] font-black rounded-lg transition-all ${
+                  className={`flex-1 py-3.5 text-[10px] font-black rounded-lg transition-all ${
                     helmet1Size === size 
                       ? 'bg-primary text-white shadow-md shadow-primary/10' 
                       : 'text-muted hover:text-foreground hover:bg-primary/5'
@@ -1416,7 +1424,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
                   key={size}
                   type="button"
                   onClick={() => setHelmet2Size(size)}
-                  className={`flex-1 py-1.5 text-[9px] font-black rounded-lg transition-all ${
+                  className={`flex-1 py-3.5 text-[10px] font-black rounded-lg transition-all ${
                     helmet2Size === size 
                       ? 'bg-primary text-white shadow-md shadow-primary/10' 
                       : 'text-muted hover:text-foreground hover:bg-primary/5'
@@ -1440,7 +1448,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
                   key={opt.label}
                   type="button"
                   onClick={() => setSurfRack(opt.value)}
-                  className={`flex-1 py-1.5 text-[9px] font-black rounded-lg transition-all ${
+                  className={`flex-1 py-3.5 text-[10px] font-black rounded-lg transition-all ${
                     surfRack === opt.value 
                       ? 'bg-primary text-white shadow-md shadow-primary/10' 
                       : 'text-muted hover:text-foreground hover:bg-primary/5'
@@ -1787,7 +1795,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
       />
 
     {/* Sticky Bottom Bar */}
-      <div className="sticky bottom-0 bg-surface/95 backdrop-blur-xl border-t border-border p-4 mt-auto z-[1000] shadow-[0_-20px_50px_rgba(0,0,0,0.15)]">
+      <div className="sticky bottom-0 bg-surface/95 backdrop-blur-xl border-t border-border p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] sm:p-4 mt-auto z-[1000] shadow-[0_-20px_50px_rgba(0,0,0,0.15)]">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-6">
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">

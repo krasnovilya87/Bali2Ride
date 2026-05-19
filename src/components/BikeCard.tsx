@@ -54,15 +54,15 @@ export const BikeCard: React.FC<BikeCardProps> = ({ bike }) => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="flex flex-col"
+                    className="flex flex-col w-full overflow-hidden"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm md:text-xl font-display font-bold whitespace-nowrap text-foreground flex items-baseline gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] sm:text-sm md:text-xl font-display font-bold whitespace-nowrap text-foreground flex items-baseline gap-1">
                         {formatPrice(currentPrice)}
-                        <span className="text-[8px] md:text-xs text-muted font-normal uppercase">IDR</span>
-                        <span className="text-[10px] md:text-xs text-muted font-medium opacity-70">
-                          {getUSD(currentPrice)}
-                        </span>
+                        <span className="text-[7px] md:text-xs text-muted font-normal uppercase">IDR</span>
+                      </span>
+                      <span className="text-[8px] md:text-xs text-muted font-medium opacity-70 whitespace-nowrap">
+                        {getUSD(currentPrice)}
                       </span>
                     </div>
                     {currentPrice < bike.pricePerDay && (

@@ -6,8 +6,8 @@ export const Footer = ({ onAdminClick }: { onAdminClick?: () => void }) => {
   const { t } = useLanguage();
 
   return (
-    <footer className="py-8 border-t border-border bg-surface">
-      <div className="max-w-7xl mx-auto px-6 flex flex-col items-center gap-6">
+    <footer className="py-4 border-t border-border bg-surface">
+      <div className="max-w-7xl mx-auto px-6 flex flex-col items-center gap-3">
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
           <Link 
             to="/faq"
