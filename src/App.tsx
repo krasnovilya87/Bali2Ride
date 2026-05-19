@@ -9,6 +9,7 @@ import { Navbar } from './components/Navbar';
 import { Catalog } from './components/Catalog';
 import { Footer } from './components/Footer';
 import { QuickContact } from './components/QuickContact';
+import { Advantages } from './components/Advantages';
 import { LanguageProvider } from './LanguageContext';
 import { RentalProvider, useRental } from './RentalContext';
 import { BookingDetails } from './components/BookingDetails';
@@ -87,6 +88,7 @@ const AppContent = () => {
       <main>
         <Catalog />
       </main>
+      <Advantages />
       <QuickContact />
       <Footer 
         onAdminClick={() => setShowAdmin(true)} 
