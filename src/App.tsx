@@ -23,13 +23,19 @@ import { FAQ } from './components/FAQ';
 import { getLatestExchangeRates, updateExchangeRates } from './services/dataService';
 import { APIProvider } from '@vis.gl/react-google-maps';
 
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { DataDeletion } from './components/DataDeletion';
+
 const AppContent = () => {
   const { selectedBike, setSelectedBike } = useRental();
   const [showAdmin, setShowAdmin] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);
-  const [showTerms, setShowTerms] = useState(false);
-  const [showFAQ, setShowFAQ] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const location = useLocation();
+
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   useEffect(() => {
     // Seed exchange rates if missing from Firebase
@@ -84,47 +90,53 @@ const AppContent = () => {
           Firebase Connection Error: {connectionError}. Please check your configuration.
         </div>
       )}
-      <Navbar />
-      <main>
-        <Catalog />
-      </main>
-      <Advantages />
-      <QuickContact />
-      <Footer 
-        onAdminClick={() => setShowAdmin(true)} 
-        onPrivacyClick={() => setShowPrivacy(true)}
-        onTermsClick={() => setShowTerms(true)}
-        onFAQClick={() => setShowFAQ(true)}
-      />
+      
+      <Routes>
+        <Route path="/" element={
+          <>
+            <Navbar />
+            <main>
+              <Catalog />
+            </main>
+            <Advantages />
+            <QuickContact />
+            <Footer 
+              onAdminClick={() => setShowAdmin(true)} 
+            />
 
-      <AdminPanel isOpen={showAdmin} onClose={() => setShowAdmin(false)} />
-      <PrivacyPolicy isOpen={showPrivacy} onClose={() => setShowPrivacy(false)} />
-      <TermsOfService isOpen={showTerms} onClose={() => setShowTerms(false)} />
-      <FAQ isOpen={showFAQ} onClose={() => setShowFAQ(false)} />
+            <AdminPanel isOpen={showAdmin} onClose={() => setShowAdmin(false)} />
 
-      <AnimatePresence>
-        {selectedBike && (
-          <BookingDetails 
-            bike={selectedBike} 
-            onClose={() => setSelectedBike(null)} 
-            onPrivacyClick={() => setShowPrivacy(true)}
-            onTermsClick={() => setShowTerms(true)}
-          />
-        )}
-      </AnimatePresence>
+            <AnimatePresence>
+              {selectedBike && (
+                <BookingDetails 
+                  bike={selectedBike} 
+                  onClose={() => setSelectedBike(null)} 
+                />
+              )}
+            </AnimatePresence>
+          </>
+        } />
+        
+        <Route path="/privacy" element={<PrivacyPolicy isOpen={true} onClose={() => window.history.back()} />} />
+        <Route path="/terms" element={<TermsOfService isOpen={true} onClose={() => window.history.back()} />} />
+        <Route path="/faq" element={<FAQ isOpen={true} onClose={() => window.history.back()} />} />
+        <Route path="/data-deletion" element={<DataDeletion />} />
+      </Routes>
     </div>
   );
 };
 
 export default function App() {
   return (
-    <APIProvider apiKey={process.env.GOOGLE_MAPS_PLATFORM_KEY || ''} version="weekly" libraries={['places']}>
-      <LanguageProvider>
-        <RentalProvider>
-          <AppContent />
-        </RentalProvider>
-      </LanguageProvider>
-    </APIProvider>
+    <Router>
+      <APIProvider apiKey={process.env.GOOGLE_MAPS_PLATFORM_KEY || ''} version="weekly" libraries={['places']}>
+        <LanguageProvider>
+          <RentalProvider>
+            <AppContent />
+          </RentalProvider>
+        </LanguageProvider>
+      </APIProvider>
+    </Router>
   );
 }
 

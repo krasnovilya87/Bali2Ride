@@ -1,8 +1,8 @@
 import React from 'react';
-import { Bike, Instagram, MessageCircle, Mail, MapPin, Phone, Send, MessageSquareText } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
 
-export const Footer = ({ onAdminClick, onPrivacyClick, onTermsClick, onFAQClick }: { onAdminClick?: () => void, onPrivacyClick?: () => void, onTermsClick?: () => void, onFAQClick?: () => void }) => {
+export const Footer = ({ onAdminClick }: { onAdminClick?: () => void }) => {
   const { t } = useLanguage();
 
   return (
@@ -19,27 +19,34 @@ export const Footer = ({ onAdminClick, onPrivacyClick, onTermsClick, onFAQClick 
             © {new Date().getFullYear()} CocoDrive. All rights reserved.
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={onFAQClick}
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          <Link 
+            to="/faq"
             className="text-[8px] text-muted uppercase tracking-[0.2em] opacity-50 hover:opacity-100 transition-opacity underline decoration-dotted underline-offset-4"
           >
             FAQ
-          </button>
+          </Link>
           <span className="text-[8px] text-muted/30">•</span>
-          <button 
-            onClick={onPrivacyClick}
+          <Link 
+            to="/privacy"
             className="text-[8px] text-muted uppercase tracking-[0.2em] opacity-50 hover:opacity-100 transition-opacity underline decoration-dotted underline-offset-4"
           >
             Privacy Policy
-          </button>
+          </Link>
           <span className="text-[8px] text-muted/30">•</span>
-          <button 
-            onClick={onTermsClick}
+          <Link 
+            to="/terms"
             className="text-[8px] text-muted uppercase tracking-[0.2em] opacity-50 hover:opacity-100 transition-opacity underline decoration-dotted underline-offset-4"
           >
             Terms of Service
-          </button>
+          </Link>
+          <span className="text-[8px] text-muted/30">•</span>
+          <Link 
+            to="/data-deletion"
+            className="text-[8px] text-muted uppercase tracking-[0.2em] opacity-50 hover:opacity-100 transition-opacity underline decoration-dotted underline-offset-4"
+          >
+            Data Deletion
+          </Link>
         </div>
       </div>
     </footer>

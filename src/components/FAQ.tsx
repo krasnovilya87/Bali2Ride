@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, HelpCircle, ChevronRight, MessageCircle, CreditCard, Shield, MapPin } from 'lucide-react';
+import { X, HelpCircle, ChevronRight, MessageCircle, CreditCard, Shield, MapPin, ChevronLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface FAQProps {
   isOpen: boolean;
@@ -108,12 +109,21 @@ export const FAQ: React.FC<FAQProps> = ({ isOpen, onClose }) => {
                   <p className="text-xs font-bold text-muted uppercase tracking-widest mt-0.5">Frequently Asked Questions</p>
                 </div>
               </div>
-              <button 
-                onClick={onClose}
-                className="p-2.5 bg-white/5 hover:bg-white/10 rounded-full transition-all border border-white/5 active:scale-95"
-              >
-                <X className="w-5 h-5 text-muted" />
-              </button>
+              <div className="flex items-center gap-3">
+                <Link 
+                  to="/"
+                  className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5 text-[10px] font-bold uppercase tracking-widest text-muted"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Home
+                </Link>
+                <button 
+                  onClick={onClose}
+                  className="p-2.5 bg-white/5 hover:bg-white/10 rounded-full transition-all border border-white/5 active:scale-95"
+                >
+                  <X className="w-5 h-5 text-muted" />
+                </button>
+              </div>
             </div>
 
             {/* Content */}

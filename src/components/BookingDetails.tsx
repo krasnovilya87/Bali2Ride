@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, useSpring, useTransform } from 'motion/react';
 import { ChevronLeft, Calendar, ShieldCheck, Zap, Info, X, MapPin, Clock, User, MessageCircle, Mail, Check, Search, Plus, Minus, Navigation, Maximize2, Minimize2, CreditCard, Banknote, Coins, Building2, Tag, Loader2, Smartphone, Headset, Truck, Landmark, Globe } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { addBike, updateBike, deleteBike, updateBikesOrder, getBookings, uploadFile, getBikes, getColors, addColor, getOwners, addOwner, getBikeListings, addBikeListing, updateListingStatus, updateBookingStatus, getAdminContacts, verifyPromoCode, getLatestExchangeRates, updateExchangeRates } from '../services/dataService';
 import { Bike, AdminContacts, PromoCode } from '../types';
 import { useLanguage } from '../LanguageContext';
@@ -26,8 +27,6 @@ import { normalizePhoneNumber, isPhoneValid } from '../lib/phoneUtils';
 interface BookingDetailsProps {
   bike: Bike;
   onClose: () => void;
-  onPrivacyClick?: () => void;
-  onTermsClick?: () => void;
 }
 
 import { isPointInPolygon } from '../lib/geometry';
@@ -410,9 +409,7 @@ const PlaceAutocomplete = ({ onPlaceSelect, value, onChange }: { onPlaceSelect: 
 
 export const BookingDetails: React.FC<BookingDetailsProps> = ({ 
   bike, 
-  onClose,
-  onPrivacyClick,
-  onTermsClick
+  onClose
 }) => {
   const { language, t } = useLanguage();
   const { range, days, setRange } = useRental();
@@ -1625,27 +1622,19 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
                 </div>
                 <span className="text-[9px] md:text-[11px] text-muted/50 leading-none font-light tracking-wide">
                   I agree to the{' '}
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      onTermsClick?.();
-                    }}
+                  <Link 
+                    to="/terms"
                     className="text-muted/70 hover:text-primary transition-colors underline underline-offset-2 decoration-muted/30"
                   >
                     Terms of Service
-                  </button>
+                  </Link>
                   {' '}and{' '}
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      onPrivacyClick?.();
-                    }}
+                  <Link 
+                    to="/privacy"
                     className="text-muted/70 hover:text-primary transition-colors underline underline-offset-2 decoration-muted/30"
                   >
                     Privacy Policy
-                  </button>
+                  </Link>
                 </span>
               </label>
             </div>

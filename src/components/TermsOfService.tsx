@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Scale, FileCheck, AlertCircle, ChevronRight, Gavel } from 'lucide-react';
+import { X, Scale, FileCheck, AlertCircle, ChevronRight, Gavel, ChevronLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface TermsOfServiceProps {
   isOpen: boolean;
@@ -30,19 +31,28 @@ export const TermsOfService: React.FC<TermsOfServiceProps> = ({ isOpen, onClose 
             <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                  <Scale className="w-6 h-6" />
+                   <Scale className="w-6 h-6" />
                 </div>
                 <div>
                   <h2 className="text-xl md:text-2xl font-display font-black text-foreground">Terms of Service</h2>
                   <p className="text-xs font-bold text-muted uppercase tracking-widest mt-0.5">Last Updated: 01.05.2026</p>
                 </div>
               </div>
-              <button 
-                onClick={onClose}
-                className="p-2.5 bg-white/5 hover:bg-white/10 rounded-full transition-all border border-white/5 active:scale-95"
-              >
-                <X className="w-5 h-5 text-muted" />
-              </button>
+              <div className="flex items-center gap-3">
+                <Link 
+                  to="/"
+                  className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5 text-[10px] font-bold uppercase tracking-widest text-muted"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Home
+                </Link>
+                <button 
+                  onClick={onClose}
+                  className="p-2.5 bg-white/5 hover:bg-white/10 rounded-full transition-all border border-white/5 active:scale-95"
+                >
+                  <X className="w-5 h-5 text-muted" />
+                </button>
+              </div>
             </div>
 
             {/* Content */}
