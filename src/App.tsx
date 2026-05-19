@@ -26,7 +26,7 @@ import { APIProvider } from '@vis.gl/react-google-maps';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { DataDeletion } from './components/DataDeletion';
 
-const API_KEY = process.env.GOOGLE_MAPS_PLATFORM_KEY || '';
+const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 const hasValidKey = Boolean(API_KEY) && API_KEY !== 'YOUR_API_KEY';
 
 const AppContent = () => {
