@@ -86,10 +86,41 @@ export const DataDeletion = () => {
         </motion.div>
       </main>
 
-      <footer className="p-8 border-t border-border text-center">
-        <p className="text-[10px] text-muted uppercase tracking-widest opacity-50">
-          © {new Date().getFullYear()} CocoDrive. All rights reserved.
-        </p>
+      <footer className="p-12 border-t border-border bg-surface/30">
+        <div className="max-w-4xl mx-auto flex flex-col items-center gap-8">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+            <Link 
+              to="/faq"
+              className="text-[9px] text-muted uppercase tracking-[0.2em] opacity-40 hover:opacity-100 transition-opacity underline decoration-dotted underline-offset-4"
+            >
+              FAQ
+            </Link>
+            <span className="text-[9px] text-muted/20">•</span>
+            <a 
+              href="/privacy.html"
+              className="text-[9px] text-muted uppercase tracking-[0.2em] opacity-40 hover:opacity-100 transition-opacity underline decoration-dotted underline-offset-4"
+            >
+              Privacy Policy
+            </a>
+            <span className="text-[9px] text-muted/20">•</span>
+            <a 
+              href="/terms.html"
+              className="text-[9px] text-muted uppercase tracking-[0.2em] opacity-40 hover:opacity-100 transition-opacity underline decoration-dotted underline-offset-4"
+            >
+              Terms of Service
+            </a>
+            <span className="text-[9px] text-muted/20">•</span>
+            <a 
+              href="/data-deletion.html"
+              className="text-[9px] text-muted uppercase tracking-[0.2em] opacity-40 hover:opacity-100 transition-opacity underline decoration-dotted underline-offset-4"
+            >
+              Data Deletion
+            </a>
+          </div>
+          <p className="text-[8px] text-muted uppercase tracking-[0.3em] opacity-30">
+            © {new Date().getFullYear()} CocoDrive. All rights reserved.
+          </p>
+        </div>
       </footer>
     </div>
   );

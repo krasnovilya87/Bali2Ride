@@ -1622,19 +1622,19 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
                 </div>
                 <span className="text-[9px] md:text-[11px] text-muted/50 leading-none font-light tracking-wide">
                   I agree to the{' '}
-                  <Link 
-                    to="/terms"
+                  <a 
+                    href="/terms.html"
                     className="text-muted/70 hover:text-primary transition-colors underline underline-offset-2 decoration-muted/30"
                   >
                     Terms of Service
-                  </Link>
+                  </a>
                   {' '}and{' '}
-                  <Link 
-                    to="/privacy"
+                  <a 
+                    href="/privacy.html"
                     className="text-muted/70 hover:text-primary transition-colors underline underline-offset-2 decoration-muted/30"
                   >
                     Privacy Policy
-                  </Link>
+                  </a>
                 </span>
               </label>
             </div>

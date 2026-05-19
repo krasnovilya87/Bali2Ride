@@ -117,10 +117,7 @@ const AppContent = () => {
           </>
         } />
         
-        <Route path="/privacy" element={<PrivacyPolicy isOpen={true} onClose={() => window.history.back()} />} />
-        <Route path="/terms" element={<TermsOfService isOpen={true} onClose={() => window.history.back()} />} />
         <Route path="/faq" element={<FAQ isOpen={true} onClose={() => window.history.back()} />} />
-        <Route path="/data-deletion" element={<DataDeletion />} />
       </Routes>
     </div>
   );
