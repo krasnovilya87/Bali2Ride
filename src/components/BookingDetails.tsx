@@ -103,7 +103,6 @@ const MapPicker = ({
   const places = useMapsLibrary('places');
 
   const handleMyLocation = () => {
-    setGeoError(null);
     if (!navigator.geolocation) {
       const isHttp = window.location.protocol === 'http:';
       const msg = language === 'ru'
@@ -151,9 +150,11 @@ const MapPicker = ({
       setGeoError(msg);
     };
 
-    // First attempt: use enableHighAccuracy: false and a generous timeout (15s) so the Safari permission prompt gets displayed and isn't closed by a fast timeout.
+    // Call navigator.geolocation.getCurrentPosition immediately as the absolute first action in handleMyLocation.
+    // This synchronous invocation linked with the user click gesture ensures iOS/Safari triggers the native permission prompt.
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        setGeoError(null);
         const newPos = {lat: pos.coords.latitude, lng: pos.coords.longitude};
         setPosition(newPos);
         
@@ -175,6 +176,7 @@ const MapPicker = ({
         // Fallback attempt: use high accuracy with generous timeout
         navigator.geolocation.getCurrentPosition(
           async (pos) => {
+            setGeoError(null);
             const newPos = {lat: pos.coords.latitude, lng: pos.coords.longitude};
             setPosition(newPos);
             
