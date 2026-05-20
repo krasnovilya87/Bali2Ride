@@ -483,7 +483,7 @@ const PlaceAutocomplete = ({ onPlaceSelect, value, onChange }: { onPlaceSelect: 
       type="text" 
       defaultValue={value}
       placeholder="Delivery Address"
-      className="w-full h-[54px] bg-surface border border-border rounded-2xl pl-11 pr-10 text-sm font-medium focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all outline-none relative z-0"
+      className="w-full h-[54px] bg-surface border border-border rounded-2xl pl-11 pr-10 text-[15px] md:text-base font-medium focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all outline-none relative z-0"
     />
   );
 };
@@ -523,11 +523,30 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
     localStorage.setItem('default_lng', mapPosition.lng.toString());
   }, [location, mapPosition]);
 
-  // Lock body scroll when component is mounted
+  // Lock body scroll and fix background shifting on mobile when component is mounted
   useEffect(() => {
+    const scrollY = window.scrollY;
+    
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100vw';
+    document.body.style.height = '100%';
     document.body.style.overflow = 'hidden';
+    
+    document.documentElement.style.height = '100%';
+    document.documentElement.style.overflow = 'hidden';
+
     return () => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
       document.body.style.overflow = '';
+      
+      document.documentElement.style.height = '';
+      document.documentElement.style.overflow = '';
+      
+      window.scrollTo(0, scrollY);
     };
   }, []);
 
@@ -1639,7 +1658,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
                   setName(formatted);
                 }}
                 placeholder="Your Name"
-                className="w-full bg-surface border border-border rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:border-primary transition-all outline-none"
+                className="w-full h-[54px] bg-surface border border-border rounded-2xl pl-11 pr-4 text-[15px] md:text-base font-medium focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all outline-none"
               />
             </div>
 
@@ -1659,7 +1678,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
                 placeholder="WhatsApp Number"
                   containerClass="!w-full"
                   inputClass={cn(
-                    "!w-full !h-12 !pl-11 !rounded-xl !bg-surface !border !text-sm !font-display !font-medium !text-foreground !outline-none",
+                    "!w-full !h-[54px] !pl-11 !pr-4 !rounded-2xl !bg-surface !border !text-[15px] md:!text-base !font-sans !font-medium !text-foreground !outline-none focus:!border-primary focus:!ring-4 focus:!ring-primary/5 transition-all",
                     phone && !isValid ? "!border-red-500/50" : "!border-border"
                   )}
                   buttonClass="!hidden" 
