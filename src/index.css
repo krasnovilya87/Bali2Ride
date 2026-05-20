@@ -170,3 +170,20 @@
   40%, 60% { transform: translate3d(4px, 0, 0); }
 }
 
+/* 
+  Prevent browser zoom on input focus for iOS and mobile devices.
+  By forcing font-size to 16px on mobile viewports, browsers do not automatically zoom/shift the screen upon focus.
+*/
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="email"],
+  input[type="search"],
+  .react-tel-input .form-control,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
