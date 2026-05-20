@@ -1403,7 +1403,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
                   key={size}
                   type="button"
                   onClick={() => setHelmet1Size(size)}
-                  className={`flex-1 py-2.5 text-[10px] font-black rounded-lg transition-all ${
+                  className={`flex-1 py-2.5 text-[10px] font-black rounded-xl transition-all ${
                     helmet1Size === size 
                       ? 'bg-primary text-white shadow-md shadow-primary/10' 
                       : 'text-muted hover:text-foreground hover:bg-primary/5'
@@ -1424,7 +1424,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
                   key={size}
                   type="button"
                   onClick={() => setHelmet2Size(size)}
-                  className={`flex-1 py-2.5 text-[10px] font-black rounded-lg transition-all ${
+                  className={`flex-1 py-2.5 text-[10px] font-black rounded-xl transition-all ${
                     helmet2Size === size 
                       ? 'bg-primary text-white shadow-md shadow-primary/10' 
                       : 'text-muted hover:text-foreground hover:bg-primary/5'
@@ -1448,7 +1448,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
                   key={opt.label}
                   type="button"
                   onClick={() => setSurfRack(opt.value)}
-                  className={`flex-1 py-2.5 text-[10px] font-black rounded-lg transition-all ${
+                  className={`flex-1 py-2.5 text-[10px] font-black rounded-xl transition-all ${
                     surfRack === opt.value 
                       ? 'bg-primary text-white shadow-md shadow-primary/10' 
                       : 'text-muted hover:text-foreground hover:bg-primary/5'
