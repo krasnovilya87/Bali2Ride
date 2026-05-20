@@ -117,15 +117,16 @@ const MapPicker = ({
       let msg = "";
       const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
       const isIframe = window.self !== window.top;
+      const rawErrorDetail = error.message ? ` (${error.message})` : ' (PERMISSION_DENIED)';
 
       if (language === 'ru') {
         if (error.code === error.PERMISSION_DENIED) {
           if (isSafari && isIframe) {
-            msg = 'В Safari внутри фрейма AI Studio доступ к геопозиции заблокирован политикой безопасности Apple. Чтобы разрешить геопозицию и увидеть адрес на карте, откройте сайт в новой вкладке (кнопка в правом верхнем углу панели разработчика) и нажмите кнопку заново.';
+            msg = 'В Safari внутри фрейма AI Studio доступ к геопозиции заблокирован политикой безопасности Apple. Чтобы разрешить геопозицию и увидеть адрес на карте, откройте сайт в новой вкладке (кнопка в правом верхнем углу панели разработчика) и нажмите кнопку заново.' + rawErrorDetail;
           } else if (isSafari) {
-            msg = 'Доступ к геопозиции в Safari отклонен. Чтобы показать встроенный запрос, перейдите в Настройки Safari для этого сайта -> Геопозиция -> смените с "Запретить" на "Спросить" или "Разрешить", затем обновите страницу.';
+            msg = 'Доступ к геопозиции в Safari отклонен. Пожалуйста, проверьте: 1) В Настройках Safari -> вкладка "Веб-сайты" -> "Геопозиция" (для этого сайта установлено "Спросить" или "Разрешить"); 2) В системных настройках iOS/macOS -> "Конфиденциальность и безопасность" -> "Службы геолокации" включены и разрешены для Safari.' + rawErrorDetail;
           } else {
-            msg = 'Доступ к геопозиции отклонен. Пожалуйста, предоставьте сайту разрешение на геопозицию в настройках браузера и обновите страницу.';
+            msg = 'Доступ к геопозиции отклонен. Пожалуйста, предоставьте сайту разрешение на геопозицию в настройках браузера и обновите страницу.' + rawErrorDetail;
           }
         } else if (error.code === error.TIMEOUT) {
           msg = 'Время ожидания геопозиции истекло. Пожалуйста, попробуйте еще раз.';
@@ -135,11 +136,11 @@ const MapPicker = ({
       } else {
         if (error.code === error.PERMISSION_DENIED) {
           if (isSafari && isIframe) {
-            msg = 'In Safari under AI Studio iframe, geolocation is blocked by Apple security policies. Please open this app in a new tab (button at the top right of the developer panel) to trigger the native geolocation prompt.';
+            msg = 'In Safari under AI Studio iframe, geolocation is blocked by Apple security policies. Please open this app in a new tab (button at the top right of the developer panel) to trigger the native geolocation prompt.' + rawErrorDetail;
           } else if (isSafari) {
-            msg = 'Location permission denied in Safari. To enable the prompt, go to Safari Preferences -> Website Settings -> Location -> change from "Deny" to "Ask" or "Allow", then refresh.';
+            msg = 'Location permission denied in Safari. Please verify: 1) In Safari Preferences -> Websites -> Location (set to "Ask" or "Allow" for this site); 2) In your iOS/macOS System Settings -> Privacy & Security -> Location Services (enabled and allowed for Safari).' + rawErrorDetail;
           } else {
-            msg = 'Location permission denied. Please allow location access in your browser settings and refresh.';
+            msg = 'Location permission denied. Please allow location access in your browser settings and refresh.' + rawErrorDetail;
           }
         } else if (error.code === error.TIMEOUT) {
           msg = 'Location request timed out. Please try again.';
