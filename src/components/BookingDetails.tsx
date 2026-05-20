@@ -122,36 +122,36 @@ const MapPicker = ({
       if (language === 'ru') {
         if (error.code === error.PERMISSION_DENIED) {
           if (isSafari && isIframe) {
-            msg = 'В Safari во фрейме AI Studio геолокация недоступна. Пожалуйста, откройте приложение в новой вкладке (кнопка в правом верхнем углу кликабельной панели), чтобы Safari смог показать встроенное окно запроса геопозиции.';
+            msg = 'В Safari внутри фрейма AI Studio доступ к геопозиции заблокирован политикой безопасности Apple. Чтобы разрешить геопозицию и увидеть адрес на карте, откройте сайт в новой вкладке (кнопка в правом верхнем углу панели разработчика) и нажмите кнопку заново.';
           } else if (isSafari) {
-            msg = 'Доступ к геопозиции отклонен. Пожалуйста, разрешите доступ к геопозиции в настройках Safari и системных настройках вашего устройства.';
+            msg = 'Доступ к геопозиции в Safari отклонен. Чтобы показать встроенный запрос, перейдите в Настройки Safari для этого сайта -> Геопозиция -> смените с "Запретить" на "Спросить" или "Разрешить", затем обновите страницу.';
           } else {
-            msg = 'Доступ к геопозиции отклонен. Пожалуйста, предоставьте сайту разрешение на геопозицию в настройках браузера.';
+            msg = 'Доступ к геопозиции отклонен. Пожалуйста, предоставьте сайту разрешение на геопозицию в настройках браузера и обновите страницу.';
           }
         } else if (error.code === error.TIMEOUT) {
-          msg = 'Превышено время ожидания геопозиции. Пожалуйста, попробуйте еще раз.';
+          msg = 'Время ожидания геопозиции истекло. Пожалуйста, попробуйте еще раз.';
         } else {
-          msg = 'Не удалось определить ваше местоположение. Пожалуйста, убедитесь, что службы геолокации/GPS включены.';
+          msg = 'Не удалось получить ваше местоположение. Пожалуйста, убедитесь, что службы геопозиции/GPS включены в системе.';
         }
       } else {
         if (error.code === error.PERMISSION_DENIED) {
           if (isSafari && isIframe) {
-            msg = 'In Safari under AI Studio iframe, geolocation is blocked. Please open this app in a new tab (button at top right of viewport) to trigger the native geolocation prompt.';
+            msg = 'In Safari under AI Studio iframe, geolocation is blocked by Apple security policies. Please open this app in a new tab (button at the top right of the developer panel) to trigger the native geolocation prompt.';
           } else if (isSafari) {
-            msg = 'Location permission denied. Please allow location in Safari site settings and your device privacy settings.';
+            msg = 'Location permission denied in Safari. To enable the prompt, go to Safari Preferences -> Website Settings -> Location -> change from "Deny" to "Ask" or "Allow", then refresh.';
           } else {
-            msg = 'Location permission denied. Please enable location permissions for this site in your browser settings.';
+            msg = 'Location permission denied. Please allow location access in your browser settings and refresh.';
           }
         } else if (error.code === error.TIMEOUT) {
           msg = 'Location request timed out. Please try again.';
         } else {
-          msg = 'Could not retrieve your location. Please ensure location services are enabled.';
+          msg = 'Could not retrieve your location. Please ensure location services/GPS are enabled on your device.';
         }
       }
       setGeoError(msg);
     };
 
-    // First attempt: use enableHighAccuracy: false for faster result on cell towers / wifi
+    // First attempt: use enableHighAccuracy: false and a generous timeout (15s) so the Safari permission prompt gets displayed and isn't closed by a fast timeout.
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const newPos = {lat: pos.coords.latitude, lng: pos.coords.longitude};
@@ -172,7 +172,7 @@ const MapPicker = ({
           return;
         }
         console.warn("First low-accuracy geo attempt failed/timed out, trying fallback...", error);
-        // Fallback attempt: use high accuracy
+        // Fallback attempt: use high accuracy with generous timeout
         navigator.geolocation.getCurrentPosition(
           async (pos) => {
             const newPos = {lat: pos.coords.latitude, lng: pos.coords.longitude};
@@ -190,10 +190,10 @@ const MapPicker = ({
           (fallbackErr) => {
             handlePosError(fallbackErr);
           },
-          { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
       },
-      { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
     );
   };
 
