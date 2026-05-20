@@ -68,6 +68,16 @@ const MapPicker = ({
   setSelectedDistrict: (d: string | null) => void
 }) => {
   const [areas, setAreas] = useState<AreaCollection | null>(null);
+  const [geoError, setGeoError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (geoError) {
+      const timer = setTimeout(() => {
+        setGeoError(null);
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [geoError]);
 
   useEffect(() => {
     fetch('/area.json')
@@ -93,11 +103,40 @@ const MapPicker = ({
   const places = useMapsLibrary('places');
 
   const handleMyLocation = () => {
+    setGeoError(null);
     if (!navigator.geolocation) {
-      console.warn("Geolocation is not supported by your browser");
+      const isHttp = window.location.protocol === 'http:';
+      const msg = language === 'ru'
+        ? (isHttp ? 'Геолокация требует безопасного соединения HTTPS' : 'Геолокация не поддерживается вашим браузером')
+        : (isHttp ? 'Geolocation requires a secure HTTPS connection' : 'Geolocation is not supported by your browser');
+      setGeoError(msg);
       return;
     }
-    
+
+    const handlePosError = (error: GeolocationPositionError) => {
+      console.error("Geolocation error:", error);
+      let msg = "";
+      if (language === 'ru') {
+        if (error.code === error.PERMISSION_DENIED) {
+          msg = 'Доступ к геопозиции отклонен. Пожалуйста, разрешите доступ к геопозиции для этого сайта в настройках браузера.';
+        } else if (error.code === error.TIMEOUT) {
+          msg = 'Превышено время ожидания геопозиции. Пожалуйста, попробуйте еще раз.';
+        } else {
+          msg = 'Не удалось получить ваше местоположение. Убедитесь, что GPS включен.';
+        }
+      } else {
+        if (error.code === error.PERMISSION_DENIED) {
+          msg = 'Location permission denied. Please enable location permissions for this site in your browser settings.';
+        } else if (error.code === error.TIMEOUT) {
+          msg = 'Location request timed out. Please try again.';
+        } else {
+          msg = 'Could not retrieve your location. Please ensure location services are enabled.';
+        }
+      }
+      setGeoError(msg);
+    };
+
+    // First attempt: use enableHighAccuracy: false for faster result on cell towers / wifi
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const newPos = {lat: pos.coords.latitude, lng: pos.coords.longitude};
@@ -113,9 +152,29 @@ const MapPicker = ({
         }
       },
       (error) => {
-        console.error("Geolocation error:", error);
+        console.warn("First low-accuracy geo attempt failed/timed out, trying fallback...", error);
+        // Fallback attempt: use high accuracy
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const newPos = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+            setPosition(newPos);
+            
+            if (places) {
+              const geocoder = new google.maps.Geocoder();
+              geocoder.geocode({ location: newPos }, (results, status) => {
+                if (status === 'OK' && results?.[0]) {
+                  setLocation(results[0].formatted_address);
+                }
+              });
+            }
+          },
+          (fallbackErr) => {
+            handlePosError(fallbackErr);
+          },
+          { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+        );
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }
     );
   };
 
@@ -179,6 +238,28 @@ const MapPicker = ({
           </MapControl>
         </Map>
         
+        {/* Geolocation Error Alert */}
+        <AnimatePresence>
+          {geoError && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="absolute top-4 left-4 right-16 z-[400] flex items-start gap-2 p-3 bg-red-500/90 backdrop-blur text-white text-xs font-medium rounded-xl shadow-lg border border-red-400/30"
+            >
+              <Info className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="flex-grow leading-tight">{geoError}</div>
+              <button 
+                type="button" 
+                onClick={() => setGeoError(null)} 
+                className="hover:bg-white/10 p-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* District Badge */}
         {selectedDistrict && (
           <motion.div 
@@ -1183,7 +1264,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
       </div>
 
       {/* Content */}
-      <div className="flex-grow px-4 pt-2 pb-12 max-w-2xl mx-auto w-full space-y-3">
+      <div className="flex-grow px-4 pt-2 pb-2 max-w-2xl mx-auto w-full space-y-3">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-display font-bold text-foreground leading-tight">
