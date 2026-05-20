@@ -1188,7 +1188,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed inset-0 z-[100] bg-background flex flex-col h-[100dvh] overflow-y-auto overscroll-none"
+      className="fixed inset-0 z-[100] bg-background flex flex-col h-[100dvh] w-full max-w-full overflow-y-auto overflow-x-hidden overscroll-none"
     >
       {/* Header Image Carousel */}
       <div className="relative w-full h-[30vh] sm:h-[45vh] shrink-0 bg-muted group/header">

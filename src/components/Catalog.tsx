@@ -53,19 +53,19 @@ export const Catalog = () => {
         
         {/* Filter UI */}
         {!loading && categories.length > 1 && (
-          <div className="flex flex-wrap items-center justify-center gap-1 md:gap-2 mb-6 md:mb-12 no-scrollbar">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-3 md:gap-x-3 mb-8 md:mb-16 max-w-[350px] sm:max-w-none mx-auto px-1">
             {categories.map((cat) => (
               <button
                 key={cat.value}
                 onClick={() => setActiveType(cat.value)}
                 className={cn(
-                  "px-2.5 md:px-6 py-1.5 md:py-2.5 rounded-full text-[10px] md:text-sm font-bold transition-all border whitespace-nowrap",
+                  "px-4 md:px-7 py-2 md:py-3.5 rounded-full text-sm md:text-lg font-extrabold transition-all border whitespace-nowrap cursor-pointer",
                   activeType === cat.value 
                     ? "bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105" 
                     : "bg-surface border-border text-muted hover:text-foreground hover:border-foreground/20"
                 )}
               >
-                {cat.label}
+                {cat.value === 'all' ? t.catalog.all : cat.label}
               </button>
             ))}
           </div>

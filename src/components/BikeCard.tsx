@@ -41,7 +41,7 @@ export const BikeCard: React.FC<BikeCardProps> = ({ bike }) => {
         </div>
 
         <div className="p-3 md:p-6 flex-grow flex-col">
-          <h3 className="text-sm md:text-xl font-display font-bold mb-1 md:mb-2 group-hover:text-primary transition-colors line-clamp-1">
+          <h3 className="text-base md:text-2xl font-display font-bold mb-1 md:mb-2 group-hover:text-primary transition-colors line-clamp-1">
             {bike.name}
           </h3>
 
@@ -57,20 +57,20 @@ export const BikeCard: React.FC<BikeCardProps> = ({ bike }) => {
                     className="flex flex-col w-full overflow-hidden"
                   >
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[10px] sm:text-sm md:text-xl font-display font-bold whitespace-nowrap text-foreground flex items-baseline gap-1">
+                      <span className="text-[17px] sm:text-lg md:text-[26px] font-display font-black whitespace-nowrap text-foreground flex items-baseline gap-1">
                         {formatPrice(currentPrice)}
-                        <span className="text-[7px] md:text-xs text-muted font-normal uppercase">IDR</span>
+                        <span className="text-[10px] md:text-sm text-muted font-normal uppercase">IDR</span>
                       </span>
-                      <span className="text-[8px] md:text-xs text-muted font-medium opacity-70 whitespace-nowrap">
+                      <span className="text-[11px] md:text-sm text-muted font-medium opacity-70 whitespace-nowrap">
                         {getUSD(currentPrice)}
                       </span>
                     </div>
                     {currentPrice < bike.pricePerDay && (
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] md:text-xs text-muted line-through decoration-muted/50 opacity-60">
+                        <span className="text-[11px] md:text-sm text-muted line-through decoration-muted/50 opacity-60">
                           {formatPrice(bike.pricePerDay)}
                         </span>
-                        <span className="text-[10px] md:text-xs font-black text-red-500">
+                        <span className="text-[11px] md:text-sm font-black text-red-500">
                           -{Math.round((1 - currentPrice / bike.pricePerDay) * 100)}%
                         </span>
                       </div>

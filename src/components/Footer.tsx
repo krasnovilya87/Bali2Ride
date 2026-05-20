@@ -1,9 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
 
 export const Footer = ({ onAdminClick }: { onAdminClick?: () => void }) => {
   const { t } = useLanguage();
+  const [clickTimes, setClickTimes] = useState<number[]>([]);
+
+  const handleAdminClick = () => {
+    const now = Date.now();
+    // Keep only clicks within the last 1.5 seconds
+    const validClicks = [...clickTimes, now].filter(time => now - time < 1500);
+    setClickTimes(validClicks);
+
+    if (validClicks.length >= 3) {
+      setClickTimes([]); // reset clicks
+      if (onAdminClick) {
+        onAdminClick();
+      }
+    }
+  };
 
   return (
     <footer className="py-4 border-t border-border bg-surface">
@@ -40,8 +55,8 @@ export const Footer = ({ onAdminClick }: { onAdminClick?: () => void }) => {
 
         <div className="flex flex-col items-center gap-2">
           <button 
-            onClick={onAdminClick}
-            className="text-[8px] text-muted uppercase tracking-[0.2em] opacity-50 hover:opacity-100 transition-opacity"
+            onClick={handleAdminClick}
+            className="text-[8px] text-muted uppercase tracking-[0.2em] opacity-50 hover:opacity-100 transition-opacity select-none cursor-pointer"
           >
             {t.footer.desc}
           </button>
