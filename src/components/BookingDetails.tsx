@@ -116,17 +116,32 @@ const MapPicker = ({
     const handlePosError = (error: GeolocationPositionError) => {
       console.error("Geolocation error:", error);
       let msg = "";
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      const isIframe = window.self !== window.top;
+
       if (language === 'ru') {
         if (error.code === error.PERMISSION_DENIED) {
-          msg = 'Доступ к геопозиции отклонен. Пожалуйста, разрешите доступ к геопозиции для этого сайта в настройках браузера.';
+          if (isSafari && isIframe) {
+            msg = 'В Safari во фрейме AI Studio геолокация недоступна. Пожалуйста, откройте приложение в новой вкладке (кнопка в правом верхнем углу кликабельной панели), чтобы Safari смог показать встроенное окно запроса геопозиции.';
+          } else if (isSafari) {
+            msg = 'Доступ к геопозиции отклонен. Пожалуйста, разрешите доступ к геопозиции в настройках Safari и системных настройках вашего устройства.';
+          } else {
+            msg = 'Доступ к геопозиции отклонен. Пожалуйста, предоставьте сайту разрешение на геопозицию в настройках браузера.';
+          }
         } else if (error.code === error.TIMEOUT) {
           msg = 'Превышено время ожидания геопозиции. Пожалуйста, попробуйте еще раз.';
         } else {
-          msg = 'Не удалось получить ваше местоположение. Убедитесь, что GPS включен.';
+          msg = 'Не удалось определить ваше местоположение. Пожалуйста, убедитесь, что службы геолокации/GPS включены.';
         }
       } else {
         if (error.code === error.PERMISSION_DENIED) {
-          msg = 'Location permission denied. Please enable location permissions for this site in your browser settings.';
+          if (isSafari && isIframe) {
+            msg = 'In Safari under AI Studio iframe, geolocation is blocked. Please open this app in a new tab (button at top right of viewport) to trigger the native geolocation prompt.';
+          } else if (isSafari) {
+            msg = 'Location permission denied. Please allow location in Safari site settings and your device privacy settings.';
+          } else {
+            msg = 'Location permission denied. Please enable location permissions for this site in your browser settings.';
+          }
         } else if (error.code === error.TIMEOUT) {
           msg = 'Location request timed out. Please try again.';
         } else {
@@ -152,6 +167,10 @@ const MapPicker = ({
         }
       },
       (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          handlePosError(error);
+          return;
+        }
         console.warn("First low-accuracy geo attempt failed/timed out, trying fallback...", error);
         // Fallback attempt: use high accuracy
         navigator.geolocation.getCurrentPosition(
